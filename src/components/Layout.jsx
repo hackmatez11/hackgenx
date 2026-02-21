@@ -3,10 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext_simple';
 
 const navItems = [
-    { icon: 'dashboard', label: 'Dashboard', path: '/dashboard' },
-    { icon: 'queue', label: 'Queues', path: null },
+    { icon: 'dashboard', label: 'Queue Dashboard', path: '/dashboard' },
+    { icon: 'queue', label: 'OPD Queue', path: '/dashboard' },
     { icon: 'bed', label: 'Bed Management', path: '/bed-management' },
-    { icon: 'stethoscope', label: 'Doctors', path: null },
+    { icon: 'stethoscope', label: 'Doctors', path: '/ai-prediction' },
     { icon: 'groups', label: 'Patients', path: '/patients' },
     { icon: 'calendar_today', label: 'Appointments', path: '/appointments' },
     { icon: 'psychology', label: 'AI Prediction', path: '/ai-prediction' },
@@ -110,7 +110,7 @@ export default function Layout({ children }) {
                                 </span>
                                 <span className="text-xs text-slate-500 capitalize">{userRole}</span>
                             </div>
-                            <button 
+                            <button
                                 onClick={handleSignOut}
                                 className="text-slate-400 hover:text-slate-600 shrink-0 transition-colors"
                                 title="Sign out"
