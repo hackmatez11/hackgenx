@@ -8,6 +8,7 @@ const navItems = [
     { icon: 'bed', label: 'Bed Management', path: '/bed-management' },
     { icon: 'stethoscope', label: 'Doctors', path: null },
     { icon: 'groups', label: 'Patients', path: '/patients' },
+    { icon: 'calendar_today', label: 'Appointments', path: '/appointments' },
     { icon: 'psychology', label: 'AI Prediction', path: '/ai-prediction' },
 ];
 

@@ -57,6 +57,22 @@ CREATE TABLE IF NOT EXISTS admissions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Appointments Table
+CREATE TABLE IF NOT EXISTS appointments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_name TEXT NOT NULL,
+  age INTEGER NOT NULL CHECK (age > 0 AND age < 150),
+  disease TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT NOT NULL,
+  appointment_date TIMESTAMP WITH TIME ZONE,
+  doctor_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_patients_token_number ON patients(token_number);
 CREATE INDEX IF NOT EXISTS idx_patients_current_stage ON patients(current_stage);
@@ -75,6 +91,10 @@ CREATE INDEX IF NOT EXISTS idx_admissions_patient_id ON admissions(patient_id);
 CREATE INDEX IF NOT EXISTS idx_admissions_severity_level ON admissions(severity_level);
 CREATE INDEX IF NOT EXISTS idx_admissions_bed_id ON admissions(bed_id);
 CREATE INDEX IF NOT EXISTS idx_admissions_admission_time ON admissions(admission_time);
+
+CREATE INDEX IF NOT EXISTS idx_appointments_doctor_id ON appointments(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
+CREATE INDEX IF NOT EXISTS idx_appointments_appointment_date ON appointments(appointment_date);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
@@ -104,6 +124,10 @@ CREATE TRIGGER update_beds_updated_at
 
 CREATE TRIGGER update_admissions_updated_at
   BEFORE UPDATE ON public.admissions
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_appointments_updated_at
+  BEFORE UPDATE ON public.appointments
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Function to handle new user signup (creates user profile)
