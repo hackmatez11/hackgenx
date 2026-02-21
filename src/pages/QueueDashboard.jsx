@@ -91,6 +91,7 @@ export default function QueueDashboard() {
     const [completedPatients, setCompletedPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [markingId, setMarkingId] = useState(null);
+    const [admittingId, setAdmittingId] = useState(null);
     const [search, setSearch] = useState('');
     const [movingAvgWait, setMovingAvgWait] = useState(DEFAULT_WAIT_MINUTES);
 
@@ -177,6 +178,60 @@ export default function QueueDashboard() {
         }
     };
 
+    const handleAdmit = async (queueEntry) => {
+        const bedType = window.prompt(
+            `Admit ${queueEntry.patient_name} to which ward?\n\nOptions: general, icu, emergency, private, maternity`,
+            'general'
+        );
+        if (!bedType) return; // cancelled
+        const validTypes = ['general', 'icu', 'emergency', 'private', 'maternity'];
+        if (!validTypes.includes(bedType.trim().toLowerCase())) {
+            alert('Invalid bed type. Choose from: general, icu, emergency, private, maternity');
+            return;
+        }
+
+        setAdmittingId(queueEntry.id);
+        try {
+            // 1. Insert into bed_queue
+            const { error: bqError } = await supabase
+                .from('bed_queue')
+                .insert([{
+                    opd_queue_id: queueEntry.id,
+                    appointment_id: queueEntry.appointment_id,
+                    patient_name: queueEntry.patient_name,
+                    disease: queueEntry.disease,
+                    token_number: queueEntry.token_number,
+                    doctor_id: queueEntry.doctor_id,
+                    bed_type: bedType.trim().toLowerCase(),
+                    status: 'waiting_for_bed',
+                    admitted_from_opd_at: new Date().toISOString(),
+                }]);
+            if (bqError) throw bqError;
+
+            // 2. Mark the OPD queue entry as completed
+            const completedAt = new Date().toISOString();
+            const actualWaitMinutes = parseFloat(
+                ((Date.now() - new Date(queueEntry.entered_queue_at).getTime()) / 60000).toFixed(2)
+            );
+            await supabase
+                .from('opd_queue')
+                .update({
+                    status: 'completed',
+                    completed_at: completedAt,
+                    actual_wait_minutes: actualWaitMinutes,
+                })
+                .eq('id', queueEntry.id);
+
+            await fetchQueue();
+            alert(`${queueEntry.patient_name} has been admitted to the ${bedType} ward queue.`);
+        } catch (err) {
+            console.error('Admit error:', err);
+            alert('Failed to admit patient: ' + err.message);
+        } finally {
+            setAdmittingId(null);
+        }
+    };
+
     const filtered = queue.filter(
         (p) =>
             p.patient_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -236,7 +291,7 @@ export default function QueueDashboard() {
                         barColor="bg-[#2b8cee]"
                         barPct={capacityPct}
                     />
-                   
+
                     <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
@@ -340,18 +395,34 @@ export default function QueueDashboard() {
                                             </td>
                                             <td className="px-5 py-4"><StatusBadge status={p.status} /></td>
                                             <td className="px-5 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleMarkComplete(p)}
-                                                    disabled={markingId === p.id}
-                                                    className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                                                >
-                                                    {markingId === p.id ? (
-                                                        <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                                                    ) : (
-                                                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                                                    )}
-                                                    {markingId === p.id ? 'Saving...' : 'Mark Complete'}
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {/* Admit to Bed */}
+                                                    <button
+                                                        onClick={() => handleAdmit(p)}
+                                                        disabled={admittingId === p.id || markingId === p.id}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                                    >
+                                                        {admittingId === p.id ? (
+                                                            <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                                                        ) : (
+                                                            <span className="material-symbols-outlined text-[16px]">bed</span>
+                                                        )}
+                                                        {admittingId === p.id ? 'Admitting...' : 'Admit'}
+                                                    </button>
+                                                    {/* Mark Complete */}
+                                                    <button
+                                                        onClick={() => handleMarkComplete(p)}
+                                                        disabled={markingId === p.id || admittingId === p.id}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                                    >
+                                                        {markingId === p.id ? (
+                                                            <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                                                        ) : (
+                                                            <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                                        )}
+                                                        {markingId === p.id ? 'Saving...' : 'Complete'}
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

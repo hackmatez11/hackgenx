@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext_simple';
 const navItems = [
     { icon: 'dashboard', label: 'Queue Dashboard', path: '/dashboard' },
     { icon: 'queue', label: 'OPD Queue', path: '/dashboard' },
-    { icon: 'bed', label: 'Bed Management', path: '/bed-management' },
-    { icon: 'stethoscope', label: 'Doctors', path: '/ai-prediction' },
+    { icon: 'bed', label: 'Bed Queue', path: '/bed-queue' },
+    { icon: 'meeting_room', label: 'Bed Management', path: '/bed-management' },
     { icon: 'groups', label: 'Patients', path: '/patients' },
     { icon: 'calendar_today', label: 'Appointments', path: '/appointments' },
     { icon: 'psychology', label: 'AI Prediction', path: '/ai-prediction' },
