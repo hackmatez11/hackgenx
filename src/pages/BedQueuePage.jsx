@@ -75,7 +75,15 @@ function AssignBedModal({ patient, onClose, onAssign, assigning }) {
                     .order('bed_number', { ascending: true });
 
                 if (fetchError) throw fetchError;
-                setAvailableBeds(data || []);
+                
+                // Normalize the data - ensure we have 'id' property
+                const normalizedData = (data || []).map(bed => ({
+                    ...bed,
+                    id: bed.id || bed.bed_id
+                }));
+                
+                console.log('Fetched beds:', normalizedData);
+                setAvailableBeds(normalizedData);
             } catch (err) {
                 console.error('Fetch available beds error:', err);
                 setError('Failed to load available beds.');
@@ -88,9 +96,25 @@ function AssignBedModal({ patient, onClose, onAssign, assigning }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        console.log('Submit - selectedBedId:', selectedBedId);
+        console.log('Available beds:', availableBeds);
+        
         if (!selectedBedId) { setError('Please select a bed.'); return; }
-        const bed = availableBeds.find(b => b.id === selectedBedId);
-        onAssign({ bedId: bed.id, bedType: bed.bed_type, bedNumber: bed.bed_number });
+        
+        const bed = availableBeds.find(b => {
+            const bedId = b.id || b.bed_id;
+            return String(bedId) === String(selectedBedId);
+        });
+        
+        console.log('Found bed:', bed);
+        
+        if (!bed) { 
+            setError('Selected bed not found. Please try again.'); 
+            return; 
+        }
+        
+        const bedId = bed.id || bed.bed_id;
+        onAssign({ bedId: bedId, bedType: bed.bed_type, bedNumber: bed.bed_number });
     };
 
     return (
@@ -144,16 +168,23 @@ function AssignBedModal({ patient, onClose, onAssign, assigning }) {
                         ) : (
                             <select
                                 value={selectedBedId}
-                                onChange={(e) => { setSelectedBedId(e.target.value); setError(''); }}
+                                onChange={(e) => { 
+                                    console.log('Selected bed ID:', e.target.value);
+                                    setSelectedBedId(e.target.value); 
+                                    setError(''); 
+                                }}
                                 disabled={assigning}
                                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2b8cee]/30 focus:border-[#2b8cee] transition-all bg-white"
                             >
                                 <option value="">Select a bed...</option>
-                                {availableBeds.map(bed => (
-                                    <option key={bed.id} value={bed.id}>
-                                        {bed.bed_number} ({bed.bed_type.toUpperCase()})
-                                    </option>
-                                ))}
+                                {availableBeds.map(bed => {
+                                    const bedId = bed.id || bed.bed_id;
+                                    return (
+                                        <option key={bedId} value={bedId}>
+                                            {bed.bed_number || bedId.slice(0, 8)} ({bed.bed_type?.toUpperCase() || 'N/A'})
+                                        </option>
+                                    );
+                                })}
                             </select>
                         )}
                         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -241,7 +272,7 @@ export default function BedQueuePage() {
                     const { error: bedError } = await supabase
                         .from('beds')
                         .update({ status: 'available' })
-                        .eq('id', entry.bed_id);
+                        .eq('bed_id', entry.bed_id);
 
                     if (bedError) {
                         console.error('Error freeing bed on discharge:', bedError);
@@ -297,7 +328,7 @@ export default function BedQueuePage() {
                     // Normally we'd link patient_id here too if we have it
                     // patient_id: assignModalPatient.patient_id 
                 })
-                .eq('id', bedId);
+                .eq('bed_id', bedId);
 
             if (bedError) throw bedError;
 
