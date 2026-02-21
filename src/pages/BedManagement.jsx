@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 // ── Bed Card ──────────────────────────────────────────────────────────────────
 
-function BedCard({ bed, onUpdate }) {
+function BedCard({ bed, onUpdate, onDischarge }) {
     const { id, bed_number, status, patient, admission, notes } = bed;
 
     // Map database status to UI format
@@ -85,6 +85,9 @@ function BedCard({ bed, onUpdate }) {
         </div>
     );
 
+    // For occupied/critical beds, get patient info from bed_queue
+    const q = bed.activeQueue;
+
     if (status === 'critical' || (status === 'occupied' && isICU)) return (
         <div className="group bg-white rounded-xl border border-red-200 shadow-sm hover:shadow-md hover:border-red-400 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full ring-2 ring-red-50">
             <div className="h-1 bg-red-500 w-full absolute top-0" />
@@ -92,47 +95,62 @@ function BedCard({ bed, onUpdate }) {
                 <div className="flex justify-between items-start mb-3">
                     <span className="font-bold text-slate-900 text-lg">{displayId}</span>
                     <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">{status === 'critical' ? 'priority_high' : 'bed'}</span> {status === 'critical' ? 'Critical' : 'Occupied (ICU)'}
+                        <span className="material-symbols-outlined text-[14px]">{status === 'critical' ? 'priority_high' : 'monitor_heart'}</span>
+                        {status === 'critical' ? 'Critical' : 'Occupied (ICU)'}
                     </div>
                 </div>
-                <h4 className="text-sm font-semibold text-slate-900">{patient?.name || 'Unknown Patient'}</h4>
+                <h4 className="text-sm font-semibold text-slate-900">{q?.patient_name || '—'}</h4>
                 <p className="text-xs text-slate-500">
-                    Age: {patient?.age || '—'} • Adm: {timeAgo(admission?.admission_time)}
+                    {q?.disease && <span className="font-medium">{q.disease}</span>}
+                    {q?.bed_assigned_at && <span> • Adm: {timeAgo(q.bed_assigned_at)}</span>}
                 </p>
                 <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-1 text-xs text-red-600 font-medium">
-                        <span className="material-symbols-outlined text-sm">monitor_heart</span><span>{status === 'critical' ? 'Critical Monitoring' : 'ICU Monitoring'}</span>
+                        <span className="material-symbols-outlined text-sm">monitor_heart</span>
+                        <span>{status === 'critical' ? 'Critical Monitoring' : 'ICU Monitoring'}</span>
                     </div>
-                    <button className="text-slate-400 hover:text-[#2b8cee] transition-colors"><span className="material-symbols-outlined">more_vert</span></button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDischarge(id); }}
+                            className="text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-600 hover:text-white transition-colors border border-red-100"
+                        >Discharge</button>
+                        <button className="text-slate-400 hover:text-[#2b8cee] transition-colors"><span className="material-symbols-outlined">more_vert</span></button>
+                    </div>
                 </div>
             </div>
         </div>
     );
 
-    // occupied (General or others)
-    const occupiedColor = isGeneral ? '#2b8cee' : '#2b8cee'; // Default blue
-    const occupiedBg = isGeneral ? 'bg-[#2b8cee]' : 'bg-[#2b8cee]';
-
+    // occupied (General or others) — Blue
     return (
-        <div className={`group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#2b8cee]/50 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full`}>
-            <div className={`h-1 ${occupiedBg} w-full absolute top-0`} />
+        <div className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#2b8cee]/50 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full">
+            <div className="h-1 bg-[#2b8cee] w-full absolute top-0" />
             <div className="p-4 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-3">
                     <span className="font-bold text-slate-900 text-lg">{displayId}</span>
                     <div className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b8cee]/10 text-[#2b8cee] flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-[#2b8cee] animate-pulse inline-block" /> Occupied {isGeneral ? '(General)' : ''}
+                        <span className="size-1.5 rounded-full bg-[#2b8cee] animate-pulse inline-block" />
+                        Occupied{isGeneral ? ' (General)' : ''}
                     </div>
                 </div>
-                <h4 className="text-sm font-semibold text-slate-900">{patient?.name || 'Unknown Patient'}</h4>
+                <h4 className="text-sm font-semibold text-slate-900">{q?.patient_name || '—'}</h4>
                 <p className="text-xs text-slate-500">
-                    Age: {patient?.age || '—'} • {patient?.phone || ''} • Adm: {timeAgo(admission?.admission_time)}
+                    {q?.disease && <span className="font-medium">{q.disease}</span>}
+                    {q?.bed_assigned_at && <span> • Adm: {timeAgo(q.bed_assigned_at)}</span>}
                 </p>
                 {notes && <p className="text-xs font-medium text-slate-700 mt-2 bg-slate-50 p-1.5 rounded inline-block">Note: {notes}</p>}
                 <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <span className="material-symbols-outlined text-sm">schedule</span><span>{getTimeLeft(admission?.predicted_discharge_time)}</span>
+                        <span className="material-symbols-outlined text-sm">schedule</span>
+                        <span>~1d left</span>
                     </div>
-                    <button className="text-slate-400 hover:text-[#2b8cee] transition-colors"><span className="material-symbols-outlined">more_vert</span></button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDischarge(id); }}
+                            className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-[#2b8cee] px-2 py-1 rounded hover:bg-[#2b8cee] hover:text-white transition-colors border border-[#2b8cee]/20"
+                        >Discharge</button>
+                        <button className="text-slate-400 hover:text-[#2b8cee] transition-colors"><span className="material-symbols-outlined">more_vert</span></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -282,21 +300,22 @@ export default function BedManagement() {
     const fetchBeds = useCallback(async () => {
         setLoading(true);
         try {
-            // Fetch beds with patient and admission info
+            // Join bed_queue to get patient info (OPD-admitted patients use text names, not patient_id)
             const { data, error } = await supabase
                 .from('beds')
                 .select(`
                     *,
-                    patient:patients(name, age, phone),
-                    admission:admissions(*)
+                    queue_entry:bed_queue(patient_name, disease, admitted_from_opd_at, bed_assigned_at, status)
                 `);
 
             if (error) throw error;
 
-            // Simplified: only show the latest admission if multiple exist
+            // Pick the active queue entry for each bed (bed_assigned or admitted)
             const formatted = (data || []).map(bed => ({
                 ...bed,
-                admission: bed.admission?.find(a => !a.actual_discharge_time) || bed.admission?.[0] || null
+                activeQueue: bed.queue_entry?.find(
+                    q => q.status === 'bed_assigned' || q.status === 'admitted'
+                ) || bed.queue_entry?.[0] || null
             }));
 
             setBeds(formatted);
@@ -321,6 +340,37 @@ export default function BedManagement() {
             fetchBeds();
         } catch (err) {
             console.error('Update bed status error:', err);
+        }
+    };
+
+    const handleDischarge = async (bedId) => {
+        if (!window.confirm('Are you sure you want to discharge the patient and make this bed available?')) return;
+
+        try {
+            // 1. Mark the bed as available
+            const { error: bedError } = await supabase
+                .from('beds')
+                .update({ status: 'available' })
+                .eq('id', bedId);
+
+            if (bedError) throw bedError;
+
+            // 2. Mark any active queue entries as discharged
+            const { error: queueError } = await supabase
+                .from('bed_queue')
+                .update({
+                    status: 'discharged',
+                    discharged_at: new Date().toISOString()
+                })
+                .eq('bed_id', bedId)
+                .in('status', ['admitted', 'bed_assigned']);
+
+            if (queueError) throw queueError;
+
+            fetchBeds();
+        } catch (err) {
+            console.error('Discharge error:', err);
+            alert('Failed to discharge patient: ' + err.message);
         }
     };
 
@@ -413,7 +463,7 @@ export default function BedManagement() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {sortedBeds.map((bed) => (
-                                    <BedCard key={bed.id} bed={bed} onUpdate={handleUpdateBedStatus} />
+                                    <BedCard key={bed.id} bed={bed} onUpdate={handleUpdateBedStatus} onDischarge={handleDischarge} />
                                 ))}
                             </div>
                         )}

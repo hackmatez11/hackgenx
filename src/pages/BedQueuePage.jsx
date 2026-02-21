@@ -264,11 +264,13 @@ export default function BedQueuePage() {
         setAssigning(true);
         try {
             // 1. Update Bed Queue
+            const now = new Date().toISOString();
             const { error: queueError } = await supabase
                 .from('bed_queue')
                 .update({
-                    status: 'bed_assigned',
-                    bed_assigned_at: new Date().toISOString(),
+                    status: 'admitted', // Directly mark as admitted
+                    bed_assigned_at: now,
+                    admitted_at: now,   // Also set admitted_at
                     bed_type: bedType,
                     bed_id: bedId, // Using the bed UUID
                     notes: `Bed Number: ${bedNumber}`
@@ -318,7 +320,6 @@ export default function BedQueuePage() {
     const FILTERS = [
         { key: 'all', label: 'Active', count: bedQueue.length },
         { key: 'waiting_for_bed', label: 'Waiting', count: stats.waiting },
-        { key: 'bed_assigned', label: 'Assigned', count: stats.assigned },
         { key: 'admitted', label: 'Admitted', count: stats.admitted },
         { key: 'discharged', label: 'Discharged', count: null },
     ];
@@ -356,10 +357,9 @@ export default function BedQueuePage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-6">
-                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                     {[
                         { label: 'Waiting', count: stats.waiting, icon: 'hourglass_empty', iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
-                        { label: 'Assigned', count: stats.assigned, icon: 'bed', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
                         { label: 'Admitted', count: stats.admitted, icon: 'check_circle', iconBg: 'bg-green-100', iconColor: 'text-green-600' },
                     ].map((s) => (
                         <div key={s.label} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -424,7 +424,7 @@ export default function BedQueuePage() {
                                                 ) : (
                                                     <div className="flex flex-col gap-1">
                                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border w-fit ${BED_TYPE_COLORS[p.bed_type] || 'bg-slate-100 text-slate-600'}`}>{p.bed_type}</span>
-                                                        <span className="text-xs font-bold text-slate-700">{p.notes?.split(': ')[1] || 'Assigned'}</span>
+                                                        <span className="text-xs font-bold text-slate-700">{p.notes?.split(': ')[1] || 'Admitted'}</span>
                                                     </div>
                                                 )}
                                             </td>
@@ -441,9 +441,7 @@ export default function BedQueuePage() {
                                                         </button>
                                                     )}
                                                     {p.status === 'bed_assigned' && (
-                                                        <button onClick={() => handleUpdateStatus(p, 'admitted')} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-700 transition-colors shadow-sm flex items-center gap-1.5">
-                                                            <span className="material-symbols-outlined text-sm">check_circle</span> Admit
-                                                        </button>
+                                                        <span className="text-xs text-slate-400 italic px-3">Pending Admit...</span>
                                                     )}
                                                     {p.status === 'admitted' && (
                                                         <button onClick={() => handleUpdateStatus(p, 'discharged')} className="bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors shadow-sm flex items-center gap-1.5">
