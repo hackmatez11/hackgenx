@@ -197,7 +197,7 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
 
 function AddBedModal({ onClose, onAdd }) {
     const [bedId, setBedId] = useState('');
-    const [bedType, setBedType] = useState('icu');
+    const [bedType, setBedType] = useState('general');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -265,38 +265,16 @@ function AddBedModal({ onClose, onAdd }) {
                         <label className="block text-xs font-semibold text-slate-700 mb-2 uppercase tracking-wide">
                             Bed Type <span className="text-red-500">*</span>
                         </label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setBedType('icu')}
-                                disabled={loading}
-                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${bedType === 'icu'
-                                    ? 'border-red-500 bg-red-50'
-                                    : 'border-slate-200 bg-slate-50 hover:border-slate-300 shadow-sm'
-                                    }`}
+                        <div className="grid grid-cols-1">
+                            <div
+                                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-[#2b8cee] bg-blue-50 transition-all"
                             >
-                                <span className={`material-symbols-outlined text-2xl ${bedType === 'icu' ? 'text-red-500' : 'text-slate-400'}`}>monitor_heart</span>
+                                <span className="material-symbols-outlined text-2xl text-[#2b8cee]">bed</span>
                                 <div className="text-center">
-                                    <p className={`text-sm font-bold ${bedType === 'icu' ? 'text-red-700' : 'text-slate-700'}`}>ICU</p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">Intensive Care Unit</p>
-                                </div>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setBedType('general')}
-                                disabled={loading}
-                                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${bedType === 'general'
-                                    ? 'border-[#2b8cee] bg-blue-50'
-                                    : 'border-slate-200 bg-slate-50 hover:border-slate-300 shadow-sm'
-                                    }`}
-                            >
-                                <span className={`material-symbols-outlined text-2xl ${bedType === 'general' ? 'text-[#2b8cee]' : 'text-slate-400'}`}>bed</span>
-                                <div className="text-center">
-                                    <p className={`text-sm font-bold ${bedType === 'general' ? 'text-blue-700' : 'text-slate-700'}`}>General Ward</p>
+                                    <p className="text-sm font-bold text-blue-700">General Ward</p>
                                     <p className="text-[10px] text-slate-500 mt-0.5">Standard ward bed</p>
                                 </div>
-                            </button>
+                            </div>
                         </div>
                     </div>
 
@@ -324,7 +302,7 @@ function AddBedModal({ onClose, onAdd }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-const WARDS = ['All Wards', 'ICU', 'General Ward', 'Emergency', 'Pediatrics'];
+const WARDS = ['General Ward'];
 
 export default function BedManagement() {
     const [activeWard, setActiveWard] = useState('All Wards');
@@ -428,12 +406,7 @@ export default function BedManagement() {
         }
     };
 
-    const filteredBeds = beds.filter(bed => {
-        if (activeWard === 'All Wards') return true;
-        if (activeWard === 'ICU') return bed.bed_type === 'icu';
-        if (activeWard === 'General Ward') return bed.bed_type === 'general';
-        return bed.bed_type?.toLowerCase() === activeWard.toLowerCase();
-    });
+    const filteredBeds = beds.filter(bed => bed.bed_type === 'general');
 
     const sortedBeds = [...filteredBeds].sort((a, b) => {
         if (sortBy === 'Bed Number') return (a.bed_number || '').localeCompare(b.bed_number || '');
@@ -446,10 +419,10 @@ export default function BedManagement() {
 
     // Stats
     const stats = [
-        { label: 'Occupied', count: beds.filter(b => b.status === 'occupied').length, color: 'bg-[#2b8cee]' },
-        { label: 'Available', count: beds.filter(b => b.status === 'available').length, color: 'bg-green-500' },
-        { label: 'Cleaning', count: beds.filter(b => b.status === 'cleaning').length, color: 'bg-yellow-500' },
-        { label: 'Critical', count: beds.filter(b => b.status === 'critical').length, color: 'bg-red-500' },
+        { label: 'Occupied', count: filteredBeds.filter(b => b.status === 'occupied').length, color: 'bg-[#2b8cee]' },
+        { label: 'Available', count: filteredBeds.filter(b => b.status === 'available').length, color: 'bg-green-500' },
+        { label: 'Cleaning', count: filteredBeds.filter(b => b.status === 'cleaning').length, color: 'bg-yellow-500' },
+        { label: 'Critical', count: filteredBeds.filter(b => b.status === 'critical').length, color: 'bg-red-500' },
     ];
 
     return (
@@ -484,7 +457,7 @@ export default function BedManagement() {
                         <span className="material-symbols-outlined text-lg">domain</span>
                         <span>City General Hospital</span>
                         <span className="material-symbols-outlined text-lg">chevron_right</span>
-                        <span className="text-[#2b8cee] font-semibold">Bed Management</span>
+                        <span className="text-[#2b8cee] font-semibold">Bed Scheduling</span>
                     </div>
                 </div>
 
@@ -507,13 +480,7 @@ export default function BedManagement() {
                 <main className="flex-1 flex flex-col min-w-0">
                     <div className="bg-white px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10 shadow-sm">
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            {WARDS.map((w) => (
-                                <button
-                                    key={w}
-                                    onClick={() => setActiveWard(w)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeWard === w ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                >{w}</button>
-                            ))}
+                            <h2 className="text-lg font-bold text-slate-800 px-4">General Ward Beds</h2>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-slate-500">
                             <span className="material-symbols-outlined text-lg">sort</span>

@@ -113,6 +113,28 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                 }
             }
 
+            // 5. Free the original general ward bed
+            if (patient?.original_bed_id) {
+                // 5a. Mark original bed as available in 'beds' table
+                const { error: freeBedError } = await supabase
+                    .from('beds')
+                    .update({ status: 'available' })
+                    .eq('bed_id', patient.original_bed_id);
+                if (freeBedError) console.error('Error freeing original bed:', freeBedError);
+
+                // 5b. Mark patient as discharged from the general ward queue in 'bed_queue' table
+                // This ensures they no longer appear as occupying the bed in the UI
+                const { error: freeQueueError } = await supabase
+                    .from('bed_queue')
+                    .update({
+                        status: 'discharged',
+                        discharged_at: new Date().toISOString()
+                    })
+                    .eq('bed_id', patient.original_bed_id)
+                    .in('status', ['admitted', 'bed_assigned']);
+                if (freeQueueError) console.error('Error updating original queue entry:', freeQueueError);
+            }
+
             const message = assignedBed
                 ? `✅ ${formData.patient_name} assigned to ICU Bed ${assignedBed.bed_id}!\nEstimated discharge in ${formData.predicted_stay_days} days.`
                 : `📋 ${formData.patient_name} added to ICU waiting queue.\nNo bed currently available — will be assigned when one frees up.`;
