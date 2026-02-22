@@ -10,6 +10,7 @@ import Patients from './pages/Patients';
 import AIPrediction from './pages/AIPrediction';
 import AppointmentScheduling from './pages/AppointmentScheduling';
 import BedQueuePage from './pages/BedQueuePage';
+import ICUScheduling from './pages/ICUScheduling';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -78,6 +79,14 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="doctor">
                 <Layout><BedQueuePage /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/icu-scheduling"
+            element={
+              <ProtectedRoute requiredRole="doctor">
+                <Layout><ICUScheduling /></Layout>
               </ProtectedRoute>
             }
           />
