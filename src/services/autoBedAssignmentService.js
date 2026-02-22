@@ -90,9 +90,20 @@ export async function autoAssignBed(queueEntryId, patientName, bedType = 'genera
             };
         }
 
-        // 3. No beds available - calculate estimated wait time
-        const waitTimeMinutes = await calculateEstimatedWaitTime(bedType);
-        console.log('Calculated wait time:', waitTimeMinutes, 'for patient:', patientName);
+        // 3. No beds available - calculate estimated wait time based on queue position
+        // First, find the patient's position in the queue
+        const { data: waitingPatients } = await supabase
+            .from('bed_queue')
+            .select('id, admitted_from_opd_at')
+            .eq('status', 'waiting_for_bed')
+            .order('admitted_from_opd_at', { ascending: true });
+
+        // Find this patient's position (0 = first, 1 = second, etc.)
+        const queuePosition = waitingPatients?.findIndex(p => p.id === queueEntryId) ?? 0;
+        if (queuePosition === -1) queuePosition = waitingPatients?.length || 0;
+
+        const waitTimeMinutes = await calculateEstimatedWaitTime(bedType, queuePosition);
+        console.log('Calculated wait time:', waitTimeMinutes, 'for patient:', patientName, 'position:', queuePosition);
 
         // Update queue entry with estimated wait time
         const { error: updateError, data: updateData } = await supabase
@@ -129,15 +140,15 @@ export async function autoAssignBed(queueEntryId, patientName, bedType = 'genera
 
 /**
  * Calculates estimated wait time based on discharge predictions of occupied beds.
- * Returns the minimum remaining time from all occupied beds of the specified type.
+ * Returns wait time appropriate for the patient's position in queue.
  * 
  * @param {string} bedType - Type of bed
+ * @param {number} queuePosition - Position in queue (0 = first, 1 = second, etc.)
  * @returns {number} - Estimated wait time in minutes
  */
-async function calculateEstimatedWaitTime(bedType = 'general') {
+async function calculateEstimatedWaitTime(bedType = 'general', queuePosition = 0) {
     try {
         // Fetch occupied beds with their queue entries and discharge predictions
-        // Use left join (!left) instead of inner join to get all occupied beds
         const { data: occupiedBeds, error } = await supabase
             .from('beds')
             .select(`
@@ -158,89 +169,63 @@ async function calculateEstimatedWaitTime(bedType = 'general') {
             .eq('status', 'occupied')
             .eq('bed_type', bedType);
 
-        console.log('Occupied beds query result:', { occupiedBeds, error, count: occupiedBeds?.length });
-
-        if (error) {
-            console.error('Error fetching occupied beds:', error);
-            return 30;
+        if (error || !occupiedBeds || occupiedBeds.length === 0) {
+            return 30 + (queuePosition * 30); // Default: 30 min per patient
         }
 
-        if (!occupiedBeds || occupiedBeds.length === 0) {
-            console.log('No occupied beds found, returning default 30 min');
-            return 30;
-        }
-
-        let earliestReleaseMinutes = Infinity;
+        // Collect all release times from occupied beds
+        const releaseTimes = [];
 
         for (const bed of occupiedBeds) {
-            console.log('Processing bed:', bed.bed_number, 'queue_entry:', bed.queue_entry);
-            
-            // Find active queue entry (admitted or bed_assigned status)
             const activeQueue = bed.queue_entry?.find(
                 q => q.status === 'admitted' || q.status === 'bed_assigned'
             ) || bed.queue_entry?.[0];
 
-            console.log('Active queue for bed', bed.bed_number, ':', activeQueue);
+            let remainingMinutes = null;
 
             if (activeQueue?.predictions?.length > 0) {
-                // Get the most recent prediction
                 const sortedPredictions = [...activeQueue.predictions].sort(
                     (a, b) => new Date(b.created_at) - new Date(a.created_at)
                 );
                 const latestPrediction = sortedPredictions[0];
 
-                console.log('Latest prediction for bed', bed.bed_number, ':', latestPrediction);
-
                 if (latestPrediction.remaining_days != null) {
-                    // Convert remaining days to minutes
-                    const remainingMinutes = latestPrediction.remaining_days * 24 * 60;
-                    console.log('Using remaining_days:', latestPrediction.remaining_days, '->', remainingMinutes, 'minutes');
-                    if (remainingMinutes < earliestReleaseMinutes) {
-                        earliestReleaseMinutes = remainingMinutes;
-                    }
+                    remainingMinutes = latestPrediction.remaining_days * 24 * 60;
                 } else if (latestPrediction.predicted_discharge_date) {
-                    // Calculate from predicted discharge date
                     const dischargeDate = new Date(latestPrediction.predicted_discharge_date + 'T00:00:00');
                     const now = new Date();
-                    const diffMs = dischargeDate - now;
-                    const diffMinutes = Math.max(0, Math.ceil(diffMs / (1000 * 60)));
-                    
-                    console.log('Using predicted_discharge_date:', latestPrediction.predicted_discharge_date, '->', diffMinutes, 'minutes');
-                    
-                    if (diffMinutes < earliestReleaseMinutes) {
-                        earliestReleaseMinutes = diffMinutes;
-                    }
+                    remainingMinutes = Math.max(0, Math.ceil((dischargeDate - now) / (1000 * 60)));
                 }
-            } else {
-                // No prediction available - use admission time + default stay duration
+            }
+
+            if (remainingMinutes === null) {
+                // No prediction - use admission time + default stay duration
                 const admittedAt = new Date(activeQueue?.bed_assigned_at || activeQueue?.admitted_at || Date.now());
                 const now = new Date();
                 const elapsedMinutes = (now - admittedAt) / (1000 * 60);
-                
-                // Assume average stay is 4 days (5760 minutes) - matching the default we set
-                const averageStayMinutes = 4 * 24 * 60;
-                const remainingMinutes = Math.max(0, averageStayMinutes - elapsedMinutes);
-                
-                console.log('No prediction, using default. Admitted:', admittedAt, 'Elapsed:', elapsedMinutes, 'Remaining:', remainingMinutes);
-                
-                if (remainingMinutes < earliestReleaseMinutes) {
-                    earliestReleaseMinutes = remainingMinutes;
-                }
+                const averageStayMinutes = 4 * 24 * 60; // 4 days
+                remainingMinutes = Math.max(0, averageStayMinutes - elapsedMinutes);
             }
+
+            releaseTimes.push(remainingMinutes);
         }
 
-        // If we couldn't calculate, return default 30 minutes
-        if (earliestReleaseMinutes === Infinity) {
-            console.log('Could not calculate, returning default 30 min');
-            return 30;
-        }
+        // Sort release times in ascending order
+        releaseTimes.sort((a, b) => a - b);
 
-        console.log('Final earliest release minutes:', earliestReleaseMinutes, 'Formatted:', formatWaitTime(earliestReleaseMinutes));
-        return Math.ceil(earliestReleaseMinutes);
+        // Return the appropriate wait time based on queue position
+        // If we have fewer beds than queue position, add 30 min increments
+        if (queuePosition < releaseTimes.length) {
+            return Math.ceil(releaseTimes[queuePosition]);
+        } else {
+            // No more beds, estimate based on average
+            const avgRelease = releaseTimes.reduce((sum, t) => sum + t, 0) / releaseTimes.length;
+            return Math.ceil(avgRelease + ((queuePosition - releaseTimes.length + 1) * 30));
+        }
 
     } catch (error) {
         console.error('Error calculating wait time:', error);
-        return 30; // Default fallback
+        return 30 + (queuePosition * 30);
     }
 }
 

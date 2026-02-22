@@ -36,7 +36,8 @@ function formatWaitTime(minutes) {
     } else {
         const days = Math.floor(minutes / (24 * 60));
         const hours = Math.floor((minutes % (24 * 60)) / 60);
-        return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+        // Always show both days and hours
+        return `${days}d ${hours}h`;
     }
 }
 
@@ -261,25 +262,48 @@ export default function BedQueuePage() {
     const [updatingId, setUpdatingId] = useState(null);
     const [assignModalPatient, setAssignModalPatient] = useState(null);
     const [assigning, setAssigning] = useState(false);
+    const [filters, setFilters] = useState([
+        { key: 'all', label: 'Active', count: 0 },
+        { key: 'waiting_for_bed', label: 'Waiting', count: 0 },
+        { key: 'admitted', label: 'Admitted', count: 0 },
+    ]);
 
     const fetchBedQueue = useCallback(async () => {
         if (!user?.id) { setLoading(false); return; }
         setLoading(true);
         try {
-            let query = supabase
+            // Always fetch all non-discharged patients for stats calculation
+            let allQuery = supabase
                 .from('bed_queue')
                 .select('*')
                 .eq('doctor_id', user.id)
+                .neq('status', 'discharged')
                 .order('admitted_from_opd_at', { ascending: true });
 
+            const { data: allData } = await allQuery;
+            
+            // For filtered display, apply the active filter
+            let filteredData = allData || [];
             if (activeFilter !== 'all') {
-                query = query.eq('status', activeFilter);
-            } else {
-                query = query.neq('status', 'discharged');
+                filteredData = filteredData.filter(p => p.status === activeFilter);
             }
 
-            const { data } = await query;
-            setBedQueue(data || []);
+            setBedQueue(filteredData);
+            
+            // Update stats based on all data
+            const allStats = {
+                waiting: (allData || []).filter(p => p.status === 'waiting_for_bed').length,
+                assigned: (allData || []).filter(p => p.status === 'bed_assigned').length,
+                admitted: (allData || []).filter(p => p.status === 'admitted').length,
+            };
+            
+            // Update filters state with correct counts
+            setFilters([
+                { key: 'all', label: 'Active', count: (allData || []).length },
+                { key: 'waiting_for_bed', label: 'Waiting', count: allStats.waiting },
+                { key: 'admitted', label: 'Admitted', count: allStats.admitted },
+            ]);
+            
         } catch (err) {
             console.error('Bed queue fetch error:', err);
         } finally {
@@ -429,17 +453,10 @@ export default function BedQueuePage() {
     );
 
     const stats = {
-        waiting: bedQueue.filter(p => p.status === 'waiting_for_bed').length,
-        assigned: bedQueue.filter(p => p.status === 'bed_assigned').length,
-        admitted: bedQueue.filter(p => p.status === 'admitted').length,
+        waiting: (bedQueue || []).filter(p => p.status === 'waiting_for_bed').length,
+        assigned: (bedQueue || []).filter(p => p.status === 'bed_assigned').length,
+        admitted: (bedQueue || []).filter(p => p.status === 'admitted').length,
     };
-
-    const FILTERS = [
-        { key: 'all', label: 'Active', count: bedQueue.length },
-        { key: 'waiting_for_bed', label: 'Waiting', count: stats.waiting },
-        { key: 'admitted', label: 'Admitted', count: stats.admitted },
-        { key: 'discharged', label: 'Discharged', count: null },
-    ];
 
     return (
         <div className="flex flex-1 flex-col overflow-hidden bg-[#f6f7f8]">
@@ -492,7 +509,7 @@ export default function BedQueuePage() {
                 </div>
 
                 <div className="mb-4 flex items-center gap-2 overflow-x-auto">
-                    {FILTERS.map((f) => (
+                    {filters.map((f) => (
                         <button
                             key={f.key}
                             onClick={() => setActiveFilter(f.key)}

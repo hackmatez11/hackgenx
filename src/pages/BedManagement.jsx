@@ -165,21 +165,21 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
         </div>
     );
 
-    // occupied (General or others) — Blue
+    // occupied (General or others) — Red
     return (
-        <div className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#2b8cee]/50 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full">
-            <div className="h-1 bg-[#2b8cee] w-full absolute top-0" />
+        <div className="group bg-white rounded-xl border border-red-200 shadow-sm hover:shadow-md hover:border-red-400 transition-all cursor-pointer relative overflow-hidden flex flex-col h-full">
+            <div className="h-1 bg-red-500 w-full absolute top-0" />
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
                     <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                    <div className="px-2 py-0.5 rounded text-xs font-semibold bg-[#2b8cee]/10 text-[#2b8cee] flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-[#2b8cee] animate-pulse inline-block" />
+                    <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
                         Occupied{isGeneral ? ' (General)' : ''}
                     </div>
                 </div>
                 <h4 className="text-base font-semibold text-slate-900">{q?.patient_name || '—'}</h4>
                 {q?.disease && <p className="text-xs text-slate-500 font-medium">{q.disease}</p>}
-                <DischargeInfo accent="blue" />
+                <DischargeInfo accent="red" />
                 {notes && <p className="text-xs font-medium text-slate-700 bg-slate-50 p-1.5 rounded">Note: {notes}</p>}
                 <div className="mt-auto pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
                     {isGeneral && (
@@ -190,11 +190,11 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
                     )}
                     <button
                         onClick={(e) => { e.stopPropagation(); onDischarge(bedId); }}
-                        className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-[#2b8cee] px-2 py-1 rounded hover:bg-[#2b8cee] hover:text-white transition-colors border border-[#2b8cee]/20"
+                        className="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-600 hover:text-white transition-colors border border-red-200"
                     >Discharge</button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onUpdateRound(bed); }}
-                        className="text-[10px] font-bold uppercase tracking-wider bg-[#2b8cee] text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors border border-blue-100 flex items-center gap-1"
+                        className="text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition-colors border border-red-100 flex items-center gap-1"
                     >
                         <span className="material-symbols-outlined text-xs">edit_note</span>
                         Round
@@ -229,6 +229,13 @@ function AddBedModal({ onClose, onAdd }) {
                 }]);
 
             if (insertError) throw insertError;
+
+            // After adding a new available bed, try to auto-assign to waiting patient
+            const result = await assignSinglePatient();
+            if (result.assigned > 0) {
+                alert(`✅ ${result.message}`);
+            }
+
             onAdd(); // Trigger refresh
             onClose();
         } catch (err) {
@@ -492,10 +499,6 @@ export default function BedManagement() {
                     <button onClick={() => setShowAddBed(true)} className="flex items-center gap-2 rounded-lg h-10 px-4 bg-white hover:bg-slate-50 border border-slate-200 transition-colors text-slate-700 text-sm font-semibold">
                         <span className="material-symbols-outlined text-[20px] text-[#2b8cee]">add_box</span>
                         Add Bed
-                    </button>
-                    <button className="flex items-center gap-2 rounded-lg h-10 px-4 bg-[#2b8cee] hover:bg-blue-600 transition-colors text-white text-sm font-bold shadow-md shadow-[#2b8cee]/20">
-                        <span className="material-symbols-outlined text-[20px]">add_circle</span>
-                        Quick Allocation
                     </button>
                     <div className="size-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
                         <span className="material-symbols-outlined">person</span>

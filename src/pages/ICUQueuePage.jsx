@@ -185,7 +185,7 @@ export default function ICUQueuePage() {
         if (!window.confirm(`Discharge ${patient.patient_name} from ICU?`)) return;
         setUpdatingId(patient.id);
         try {
-            // 1. Free up the ICU bed
+            // 1. Free up ICU bed
             if (patient.assigned_bed_id) {
                 const { error: bedError } = await supabase
                     .from('icu_beds')
@@ -210,6 +210,27 @@ export default function ICUQueuePage() {
             fetchQueue();
         } catch (err) {
             console.error('Discharge error:', err);
+            alert('Error: ' + err.message);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const handleRemove = async (patient) => {
+        if (!window.confirm(`Remove ${patient.patient_name} from the ICU queue permanently? This action cannot be undone.`)) return;
+        setUpdatingId(patient.id);
+        try {
+            const { error } = await supabase
+                .from('icu_queue')
+                .delete()
+                .eq('id', patient.id);
+
+            if (error) throw error;
+
+            alert(`✅ ${patient.patient_name} has been removed from the queue.`);
+            fetchQueue();
+        } catch (err) {
+            console.error('Remove error:', err);
             alert('Error: ' + err.message);
         } finally {
             setUpdatingId(null);
@@ -418,10 +439,18 @@ export default function ICUQueuePage() {
                                                         </div>
                                                     )}
                                                     {p.status === 'discharged' && (
-                                                        <span className="text-xs text-slate-400 font-bold flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-[14px]">archive</span>
-                                                            Archived
-                                                        </span>
+                                                        <button
+                                                            onClick={() => handleRemove(p)}
+                                                            disabled={updatingId === p.id}
+                                                            className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                                                        >
+                                                            {updatingId === p.id ? (
+                                                                <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                                                            ) : (
+                                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                                            )}
+                                                            Remove
+                                                        </button>
                                                     )}
                                                 </div>
                                             </td>
