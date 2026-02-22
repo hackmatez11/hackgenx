@@ -9,10 +9,12 @@ import {
   deleteICUBed,
 } from "../services/bedService";
 import { supabase } from "../lib/supabase";
+import DailyRoundModal from "../components/DailyRoundModal";
 
 export default function ICUScheduling() {
   const [loadingType, setLoadingType] = useState(null); // "optimized" | null
   const [error, setError] = useState("");
+  const [roundBed, setRoundBed] = useState(null); // bed selected for daily round
   const [optimizedResult, setOptimizedResult] = useState(null);
 
   const [beds, setBeds] = useState([]);
@@ -55,6 +57,7 @@ export default function ICUScheduling() {
       // Map queue data to beds — compare as strings to handle UUID vs integer mismatches
       const formattedBeds = bedsData.map(bed => ({
         ...bed,
+        is_icu: true,
         activeQueue: queueData.find(q =>
           String(q.assigned_bed_id) === String(bed.id) ||
           String(q.assigned_bed_label).toUpperCase() === String(bed.bed_id).toUpperCase()
@@ -234,7 +237,7 @@ export default function ICUScheduling() {
     );
   };
 
-  const ICUBedCard = ({ bed, onEdit, onDelete }) => {
+  const ICUBedCard = ({ bed, onEdit, onDelete, onRound }) => {
     const q = bed.activeQueue;
     const isAvailable = bed.is_available;
 
@@ -319,9 +322,17 @@ export default function ICUScheduling() {
           <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-1 text-xs text-red-600 font-medium">
               <span className="material-symbols-outlined text-sm">monitor_heart</span>
-              <span className="uppercase tracking-wider">ICU - Occupied</span>
+              <span className="uppercase tracking-wider">ICU</span>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRound(bed); }}
+              className="text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors border border-red-100 flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-xs">edit_note</span>
+              Round
+            </button>
           </div>
+
         </div>
       </div>
     );
@@ -591,6 +602,7 @@ export default function ICUScheduling() {
                       bed={bed}
                       onEdit={startEditBed}
                       onDelete={handleDeleteBed}
+                      onRound={(bedObj) => setRoundBed({ ...bedObj, bed_number: bedObj.bed_id, bed_id: bedObj.id })}
                     />
                   ))}
                 </div>
@@ -599,6 +611,15 @@ export default function ICUScheduling() {
           </div>
         </>
       </main>
+
+      {/* Daily Round Modal */}
+      {roundBed && (
+        <DailyRoundModal
+          bed={roundBed}
+          onClose={() => setRoundBed(null)}
+          onUpdate={() => { setRoundBed(null); loadBedsData(); }}
+        />
+      )}
     </div>
   );
 }
