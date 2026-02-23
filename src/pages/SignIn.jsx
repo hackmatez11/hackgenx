@@ -21,17 +21,12 @@ export default function SignIn() {
     if (error) {
       setError(error.message)
     } else {
-      // Redirect based on user role
-      if (data?.user?.user_metadata?.role || userRole) {
-        const role = data?.user?.user_metadata?.role || userRole;
-        if (role === 'doctor') {
-          navigate('/dashboard')
-        } else {
-          navigate('/patient-dashboard')
-        }
-      } else {
-        // Default to dashboard if no role found
+      // Redirect based on user role from metadata
+      const role = data?.user?.user_metadata?.role
+      if (role === 'doctor') {
         navigate('/dashboard')
+      } else {
+        navigate('/patient-dashboard')
       }
     }
     

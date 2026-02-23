@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
         if (session) {
           setUser(session.user)
           // Get role from user metadata
-          const role = session.user.user_metadata?.role || 'doctor'
+          const role = session.user.user_metadata?.role || 'patient'
           setUserRole(role)
         }
       } catch (error) {
@@ -40,7 +40,7 @@ export function AuthProvider({ children }) {
           if (session) {
             setUser(session.user)
             // Get role from user metadata
-            const role = session.user.user_metadata?.role || 'doctor'
+            const role = session.user.user_metadata?.role || 'patient'
             setUserRole(role)
           } else {
             setUser(null)
@@ -93,7 +93,7 @@ export function AuthProvider({ children }) {
 
       // Get role from user metadata
       if (data.user) {
-        const role = data.user.user_metadata?.role || 'doctor'
+        const role = data.user.user_metadata?.role || 'patient'
         setUserRole(role)
       }
 
