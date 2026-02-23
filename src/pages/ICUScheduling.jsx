@@ -12,8 +12,10 @@ import {
 import { supabase } from "../lib/supabase";
 import DailyRoundModal from "../components/DailyRoundModal";
 import { autoAssignICUBed } from "./ICUQueuePage";
+import { useAuth } from '../context/AuthContext_simple';
 
 export default function ICUScheduling() {
+  const { user } = useAuth();
   const [loadingType, setLoadingType] = useState(null); // "optimized" | "prediction" | null
   const [error, setError] = useState("");
   const [roundBed, setRoundBed] = useState(null); // bed selected for daily round
@@ -48,12 +50,14 @@ export default function ICUScheduling() {
     }
   };
 
-  // Load waiting ICU queue patients
+  // Load waiting ICU queue patients for current doctor only
   const loadWaitingQueue = async () => {
+    if (!user?.id) return;
     try {
       const { data, error } = await supabase
         .from('icu_queue')
         .select('*')
+        .eq('doctor_id', user.id)
         .eq('status', 'waiting')
         .order('time', { ascending: true });
 
@@ -105,12 +109,13 @@ export default function ICUScheduling() {
     }
   };
 
-  // Load beds data
+  // Load beds data for current doctor only
   const loadBedsData = async () => {
+    if (!user?.id) return;
     try {
       const [bedsData, { data: queueData, error: queueError }] = await Promise.all([
-        getICUBeds(),
-        supabase.from('icu_queue').select('*').in('status', ['assigned'])
+        getICUBeds(user.id),  // Pass doctor ID
+        supabase.from('icu_queue').select('*').eq('doctor_id', user.id).in('status', ['assigned'])
       ]);
 
       if (queueError) throw queueError;
@@ -152,7 +157,7 @@ export default function ICUScheduling() {
   const handleAddBed = async () => {
     setBedFormLoading(true);
     try {
-      await addICUBed(bedForm);
+      await addICUBed(bedForm, user.id);
       setBedForm({
         bed_id: "",
         bed_type: "Basic",

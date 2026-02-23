@@ -207,7 +207,7 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
 
 // ── Add Bed Modal ─────────────────────────────────────────────────────────────
 
-function AddBedModal({ onClose, onAdd }) {
+function AddBedModal({ onClose, onAdd, user }) {
     const [bedId, setBedId] = useState('');
     const [bedType, setBedType] = useState('general');
     const [loading, setLoading] = useState(false);
@@ -225,7 +225,8 @@ function AddBedModal({ onClose, onAdd }) {
                 .insert([{
                     bed_number: trimmed,
                     bed_type: bedType,
-                    status: 'available'
+                    status: 'available',
+                    doctor_id: user?.id  // Store current doctor's ID
                 }]);
 
             if (insertError) throw insertError;
@@ -324,6 +325,7 @@ function AddBedModal({ onClose, onAdd }) {
 const WARDS = ['General Ward'];
 
 export default function BedManagement() {
+    const { user } = useAuth();
     const [activeWard, setActiveWard] = useState('All Wards');
     const [sortBy, setSortBy] = useState('Bed Number');
     const [beds, setBeds] = useState([]);
@@ -335,28 +337,40 @@ export default function BedManagement() {
     const [selectedBedForShift, setSelectedBedForShift] = useState(null);
 
     const fetchBeds = useCallback(async () => {
+        if (!user?.id) { setLoading(false); return; }
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            // Get beds for current doctor only
+            const { data: bedsData, error: bedsError } = await supabase
                 .from('beds')
                 .select(`
                     *,
-                    patient_id,
-                    queue_entry:bed_queue(
-                        id, patient_name, disease, phone, age, token_number,
-                        admitted_from_opd_at, bed_assigned_at, status,
-                        predictions:discharge_predictions(
-                            predicted_discharge_date, remaining_days, confidence, reasoning, created_at
-                        )
+                    patient_id
+                `)
+                .eq('doctor_id', user.id);  // Filter by doctor
+
+            if (bedsError) throw bedsError;
+
+            // Get queue entries for the current doctor only
+            const { data: queueData, error: queueError } = await supabase
+                .from('bed_queue')
+                .select(`
+                    id, patient_name, disease, phone, age, token_number,
+                    admitted_from_opd_at, bed_assigned_at, status, bed_id,
+                    predictions:discharge_predictions(
+                        predicted_discharge_date, remaining_days, confidence, reasoning, created_at
                     )
-                `);
+                `)
+                .eq('doctor_id', user.id);
 
-            if (error) throw error;
+            if (queueError) throw queueError;
 
-            const formatted = (data || []).map(bed => {
-                const activeQ = bed.queue_entry?.find(
+            // Map queue data to beds
+            const formatted = (bedsData || []).map(bed => {
+                const bedQueueEntries = queueData?.filter(q => q.bed_id === bed.bed_id) || [];
+                const activeQ = bedQueueEntries.find(
                     q => q.status === 'bed_assigned' || q.status === 'admitted'
-                ) || bed.queue_entry?.[0] || null;
+                ) || bedQueueEntries[0] || null;
 
                 // Attach the most recent prediction to the active queue entry
                 if (activeQ && activeQ.predictions?.length) {
@@ -375,7 +389,7 @@ export default function BedManagement() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user?.id]);
 
     useEffect(() => {
         fetchBeds();
@@ -461,7 +475,7 @@ export default function BedManagement() {
 
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
-            {showAddBed && <AddBedModal onClose={() => setShowAddBed(false)} onAdd={fetchBeds} />}
+            {showAddBed && <AddBedModal onClose={() => setShowAddBed(false)} onAdd={fetchBeds} user={user} />}
             {showRoundModal && selectedBed && (
                 <DailyRoundModal
                     bed={selectedBed}

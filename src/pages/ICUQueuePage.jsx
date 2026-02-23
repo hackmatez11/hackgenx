@@ -185,6 +185,7 @@ export default function ICUQueuePage() {
             let query = supabase
                 .from('icu_queue')
                 .select('*')
+                .eq('doctor_id', user.id)  // Filter by current doctor
                 .order('time', { ascending: false });
 
             // We fetch everything to have accurate counts for all tabs
