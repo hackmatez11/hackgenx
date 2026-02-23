@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext_simple';
+import NearbyHospitalsModal from './NearbyHospitalsModal';
 
 export default function ShiftToICUModal({ patient, onClose, onShift }) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [showNearbyHospitals, setShowNearbyHospitals] = useState(false);
+    const [noBedsAvailable, setNoBedsAvailable] = useState(false);
 
     const [formData, setFormData] = useState({
         patient_token: patient?.token_number || '',
@@ -114,6 +117,8 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                 }
             }
 
+            setNoBedsAvailable(!assignedBed);
+
             // 5. Free the original general ward bed
             if (patient?.original_bed_id) {
                 // 5a. Mark original bed as available in 'beds' table
@@ -138,11 +143,19 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
 
             const message = assignedBed
                 ? `✅ ${formData.patient_name} assigned to ICU Bed ${assignedBed.bed_id}!\nEstimated discharge in ${formData.predicted_stay_days} days.`
-                : `📋 ${formData.patient_name} added to ICU waiting queue.\nNo bed currently available — will be assigned when one frees up.`;
+                : `📋 ${formData.patient_name} added to ICU waiting queue.\n\nNo ICU bed currently available in this hospital.\nCheck "Nearby Hospitals" for available beds in other facilities.`;
 
             alert(message);
+            
+            // Show nearby hospitals modal if no beds available
+            if (!assignedBed) {
+                setShowNearbyHospitals(true);
+            }
+            
             onShift();
-            onClose();
+            if (assignedBed) {
+                onClose();
+            }
         } catch (err) {
             console.error('Shift to ICU error:', err);
             alert('Failed to shift patient: ' + err.message);
@@ -171,6 +184,26 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto text-left">
+                    {noBedsAvailable && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                            <span className="material-symbols-outlined text-amber-500 text-xl mt-0.5">info</span>
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-amber-800">No ICU beds available in this hospital</p>
+                                <p className="text-xs text-amber-600 mt-1">
+                                    Patient has been added to the waiting queue. You can check nearby hospitals with available beds.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNearbyHospitals(true)}
+                                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-sm">location_on</span>
+                                    Find Nearby Hospitals
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Patient Token</label>
@@ -250,6 +283,17 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                     </div>
                 </form>
             </div>
+            
+            {/* Nearby Hospitals Modal */}
+            <NearbyHospitalsModal
+                isOpen={showNearbyHospitals}
+                onClose={() => setShowNearbyHospitals(false)}
+                patientRequirements={{
+                    needsVentilator: formData.ventilator_needed,
+                    needsDialysis: formData.dialysis_needed
+                }}
+                title="Nearby Hospitals with ICU Beds"
+            />
         </div>
     );
 }

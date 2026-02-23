@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext_simple';
 import { supabase } from '../lib/supabase';
+import NearbyHospitalsModal from '../components/NearbyHospitalsModal';
+import NearbyHospitalsList from '../components/NearbyHospitalsList';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -193,6 +195,10 @@ export default function ICUQueuePage() {
     const [search, setSearch] = useState('');
     const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'waiting' | 'assigned'
     const [updatingId, setUpdatingId] = useState(null);
+    
+    // Nearby hospitals modal state
+    const [showNearbyHospitals, setShowNearbyHospitals] = useState(false);
+    const [selectedPatientForReferral, setSelectedPatientForReferral] = useState(null);
 
     const fetchQueue = useCallback(async () => {
         if (!user?.id) { setLoading(false); return; }
@@ -239,7 +245,8 @@ export default function ICUQueuePage() {
             const bestBed = findBestBed(availableBeds || [], patient);
 
             if (!bestBed) {
-                alert('No compatible ICU bed available right now.\nPatient will remain in the waiting queue.');
+                setSelectedPatientForReferral(patient);
+                setShowNearbyHospitals(true);
                 return;
             }
 
@@ -382,6 +389,16 @@ export default function ICUQueuePage() {
                     <p className="text-xs text-slate-500">Critical Care Transfer Requests — Auto-Assignment Enabled</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Nearby Hospitals Button */}
+                    <button
+                        onClick={() => setShowNearbyHospitals(true)}
+                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors text-sm font-semibold"
+                        title="Check nearby hospitals with available ICU beds"
+                    >
+                        <span className="material-symbols-outlined text-sm">location_on</span>
+                        Nearby Hospitals
+                    </button>
+                    
                     <div className="hidden md:flex items-center rounded-lg bg-slate-100 px-3 py-2">
                         <span className="material-symbols-outlined text-slate-400">search</span>
                         <input
@@ -570,7 +587,23 @@ export default function ICUQueuePage() {
                         </div>
                     )}
                 </div>
+
+                {/* Nearby Hospitals Section */}
+                <NearbyHospitalsList />
             </div>
+            
+            {/* Nearby Hospitals Modal */}
+            <NearbyHospitalsModal
+                isOpen={showNearbyHospitals}
+                onClose={() => {
+                    setShowNearbyHospitals(false);
+                    setSelectedPatientForReferral(null);
+                }}
+                patientRequirements={{
+                    needsVentilator: selectedPatientForReferral?.ventilator_needed,
+                    needsDialysis: selectedPatientForReferral?.dialysis_needed
+                }}
+            />
         </div>
     );
 }
