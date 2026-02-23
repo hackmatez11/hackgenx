@@ -75,16 +75,48 @@ export default function PatientDashboard() {
     const fetchHistory = async () => {
       if (!user?.email) return;
       try {
-        const { data, error } = await supabase
+        console.log('Fetching appointment history for:', user.email);
+        
+        // First fetch appointments for the current patient
+        const { data: appointments, error: apptError } = await supabase
           .from('appointments')
-          .select('*, doctor:user_profiles(name, email), opd_queue(estimated_wait_minutes, status)')
+          .select('*')
           .eq('email', user.email)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setAppointmentsHistory(data || []);
+        if (apptError) {
+          console.error('Supabase error:', apptError);
+          throw apptError;
+        }
+        
+        console.log('Fetched appointments:', appointments);
+        
+        // If we have appointments, fetch doctor information separately
+        if (appointments && appointments.length > 0) {
+          const doctorIds = [...new Set(appointments.map(appt => appt.doctor_id).filter(Boolean))];
+          
+          if (doctorIds.length > 0) {
+            const { data: doctors } = await supabase
+              .from('user_profiles')
+              .select('id, name, email')
+              .in('id', doctorIds);
+            
+            // Map doctor information to appointments
+            const appointmentsWithDoctors = appointments.map(appt => ({
+              ...appt,
+              doctor: doctors?.find(doc => doc.id === appt.doctor_id)
+            }));
+            
+            setAppointmentsHistory(appointmentsWithDoctors);
+          } else {
+            setAppointmentsHistory(appointments);
+          }
+        } else {
+          setAppointmentsHistory([]);
+        }
       } catch (err) {
         console.error('Error fetching history:', err);
+        setError('Failed to load medical history: ' + err.message);
       }
     };
 
@@ -170,12 +202,7 @@ export default function PatientDashboard() {
       setSuccess(`Appointment booked successfully!`);
 
       // Refresh history
-      const { data: newHistory } = await supabase
-        .from('appointments')
-        .select('*, doctor:user_profiles(name, email), opd_queue(estimated_wait_minutes, status)')
-        .eq('email', user.email)
-        .order('created_at', { ascending: false });
-      setAppointmentsHistory(newHistory || []);
+      await fetchHistory();
 
       setFormData({
         patient_name: '', age: '', disease: '', phone: '',
@@ -244,8 +271,8 @@ export default function PatientDashboard() {
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                   }`}
               >
-                <span className="material-symbols-outlined text-lg">history</span>
-                Booking History
+                <span className="material-symbols-outlined text-lg">medical_information</span>
+                Medical History
                 {appointmentsHistory.length > 0 && (
                   <span className="bg-[#2b8cee] text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
                     {appointmentsHistory.length}
@@ -444,18 +471,23 @@ export default function PatientDashboard() {
               /* Booking History List */
               <div className="animate-in slide-in-from-right duration-500">
                 <div className="flex items-center gap-3 mb-6">
-                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">Your Booking History</h2>
+                  <h2 className="text-xl font-bold text-slate-800 tracking-tight">Your Medical History</h2>
+                  <span className="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-lg font-medium">
+                    {appointmentsHistory.length} records
+                  </span>
                 </div>
 
                 {appointmentsHistory.length === 0 ? (
                   <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-4">history_toggle_off</span>
-                    <p className="text-slate-500 font-medium">No appointments found in your record.</p>
+                    <span className="material-symbols-outlined text-5xl text-slate-300 mb-4">medical_information</span>
+                    <p className="text-slate-500 font-medium mb-2">No medical history found</p>
+                    <p className="text-slate-400 text-sm mb-4">Your appointment records will appear here once you book your first visit</p>
                     <button
                       onClick={() => setActiveTab('book')}
-                      className="mt-4 text-[#2b8cee] font-bold hover:underline"
+                      className="inline-flex items-center gap-2 bg-[#2b8cee] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#1a73e8] transition-colors"
                     >
-                      Book your first appointment now
+                      <span className="material-symbols-outlined">add_circle</span>
+                      Book First Appointment
                     </button>
                   </div>
                 ) : (
@@ -471,50 +503,103 @@ export default function PatientDashboard() {
                             <div className="flex size-14 items-center justify-center rounded-xl bg-slate-50 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all shrink-0">
                               <span className="material-symbols-outlined text-3xl">medical_information</span>
                             </div>
-                            <div>
-                              <p className="text-sm font-black text-slate-900 mb-0.5">
-                                {appt.disease}
-                              </p>
-                              <div className="flex items-center gap-2 text-xs text-slate-500 font-bold mb-2">
-                                <span className="material-symbols-outlined text-[14px]">stethoscope</span>
-                                Dr. {appt.doctor?.name || appt.doctor?.email?.split('@')[0] || 'Medical Specialist'}
+                            <div className="flex-1">
+                              {/* Primary Diagnosis/Reason for Visit */}
+                              <div className="mb-3">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Chief Complaint</p>
+                                <p className="text-lg font-bold text-slate-900 mb-2">
+                                  {appt.disease || 'General consultation'}
+                                </p>
                               </div>
-                              <div className="flex flex-wrap gap-3">
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                  <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                  {new Date(appt.appointment_date).toLocaleDateString('en-IN', {
-                                    day: '2-digit', month: 'short', year: 'numeric'
-                                  })}
-                                </div>
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                  <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                  {new Date(appt.appointment_date).toLocaleTimeString('en-IN', {
-                                    hour: '2-digit', minute: '2-digit'
-                                  })}
+
+                              {/* Doctor Information */}
+                              <div className="mb-3">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Consulting Doctor</p>
+                                <div className="flex items-center gap-2 text-sm text-slate-700 font-medium">
+                                  <span className="material-symbols-outlined text-[16px] text-blue-500">stethoscope</span>
+                                  Dr. {appt.doctor?.name || appt.doctor?.email?.split('@')[0] || 'Medical Specialist'}
                                 </div>
                               </div>
-                              {/* Show Estimated Wait Time if still waiting */}
-                              {appt.opd_queue?.[0]?.status === 'waiting' && appt.opd_queue[0].estimated_wait_minutes && (
-                                <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 w-fit">
-                                  <span className="material-symbols-outlined text-[16px] text-amber-600 animate-pulse">timer</span>
-                                  <span className="text-[11px] font-bold text-amber-700">
-                                    Est. Wait: ~{appt.opd_queue[0].estimated_wait_minutes} min
-                                  </span>
+
+                              {/* Visit Details Grid */}
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Visit Date</p>
+                                  <div className="flex items-center gap-1 text-sm text-slate-600">
+                                    <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                    {new Date(appt.appointment_date).toLocaleDateString('en-IN', {
+                                      day: '2-digit', month: 'short', year: 'numeric'
+                                    })}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Time</p>
+                                  <div className="flex items-center gap-1 text-sm text-slate-600">
+                                    <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                    {new Date(appt.appointment_date).toLocaleTimeString('en-IN', {
+                                      hour: '2-digit', minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Patient Age</p>
+                                  <div className="flex items-center gap-1 text-sm text-slate-600">
+                                    <span className="material-symbols-outlined text-[14px]">person</span>
+                                    {appt.age} years
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Additional Notes */}
+                              {appt.notes && (
+                                <div className="mb-3">
+                                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Clinical Notes</p>
+                                  <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-2 border border-slate-100">
+                                    {appt.notes}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Queue Status if still waiting */}
+                              {appt.status === 'scheduled' && (
+                                <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 w-fit">
+                                  <span className="material-symbols-outlined text-[16px] text-blue-600">event</span>
+                                  <div>
+                                    <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Appointment Status</p>
+                                    <p className="text-sm font-bold text-blue-800">Scheduled - Awaiting consultation</p>
+                                  </div>
                                 </div>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between md:flex-col md:items-end gap-3 shrink-0">
-                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${appt.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
-                              appt.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                'bg-slate-100 text-slate-500'
-                              }`}>
+                          <div className="flex flex-col items-end gap-3 shrink-0">
+                            {/* Status Badge */}
+                            <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                              appt.status === 'scheduled' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                              appt.status === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                              appt.status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200' :
+                              'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>
+                              <span className="material-symbols-outlined text-[12px] mr-1">
+                                {appt.status === 'scheduled' ? 'event' : 
+                                 appt.status === 'completed' ? 'check_circle' : 
+                                 appt.status === 'cancelled' ? 'cancel' : 'help'}
+                              </span>
                               {appt.status}
                             </span>
+
+                            {/* Appointment Reference */}
                             <div className="text-right">
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Booking Ref</p>
-                              <p className="text-xs font-mono font-bold text-slate-700 uppercase">{appt.id.split('-')[0]}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Appointment ID</p>
+                              <p className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded">
+                                {appt.token_number || appt.id.split('-')[0]}
+                              </p>
+                            </div>
+
+                            {/* Contact Information */}
+                            <div className="text-right text-xs text-slate-500">
+                              <p className="font-medium">{appt.phone}</p>
                             </div>
                           </div>
                         </div>

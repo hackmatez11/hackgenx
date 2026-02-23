@@ -13,23 +13,56 @@ export const processChatbotQuery = async (req, res, next) => {
       return res.status(400).json({ error: "Query is required" });
     }
 
+    console.log(`Processing query: "${query}" with token: ${tokenNumber}`);
+
     // Generate SQL from natural language
-    const sqlQuery = await geminiService.generateSQLQuery(query, tokenNumber);
+    let sqlQuery;
+    try {
+      sqlQuery = await geminiService.generateSQLQuery(query, tokenNumber);
+      console.log(`Generated SQL: ${sqlQuery}`);
+    } catch (sqlError) {
+      console.error("Error generating SQL:", sqlError);
+      return res.status(500).json({ 
+        error: "Failed to generate SQL query. Please try rephrasing your question.",
+        details: sqlError.message 
+      });
+    }
 
     // Execute the query
     let data;
     try {
       data = await supabaseService.executeQuery(sqlQuery);
+      console.log(`Query executed successfully. Results:`, data);
     } catch (dbError) {
+      console.error("Database query failed:", dbError);
       // If query fails, try to use pre-defined functions
-      data = await handleSpecialQueries(query, tokenNumber);
+      try {
+        data = await handleSpecialQueries(query, tokenNumber);
+        console.log(`Used special query handler. Results:`, data);
+      } catch (specialError) {
+        console.error("Special query handler also failed:", specialError);
+        return res.status(500).json({ 
+          error: "Failed to execute query. Please check your token number or try a different query.",
+          details: dbError.message 
+        });
+      }
     }
 
     // Generate natural language response
-    const response = await geminiService.generateNaturalLanguageResponse(
-      data,
-      query
-    );
+    let response;
+    try {
+      response = await geminiService.generateNaturalLanguageResponse(
+        data,
+        query
+      );
+      console.log(`Generated response: ${response}`);
+    } catch (responseError) {
+      console.error("Error generating natural language response:", responseError);
+      // Fallback to basic response
+      response = data && data.length > 0 
+        ? `Query executed successfully. Found ${data.length} result(s).`
+        : "No results found for your query.";
+    }
 
     res.json({
       success: true,
@@ -38,6 +71,7 @@ export const processChatbotQuery = async (req, res, next) => {
       sql: sqlQuery, // Optional: for debugging
     });
   } catch (error) {
+    console.error("Unexpected error in processChatbotQuery:", error);
     next(error);
   }
 };

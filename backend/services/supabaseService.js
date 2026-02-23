@@ -1,6 +1,169 @@
 import { supabase } from "../db/supabaseClient.js";
 
 export class SupabaseService {
+  /**
+   * Execute a SQL query by parsing it and using Supabase query builder
+   * This avoids issues with raw SQL execution and quote handling
+   */
+  async executeQuery(sqlQuery) {
+    try {
+      console.log("Parsing and executing SQL query:", sqlQuery);
+
+      // Parse the SQL query to extract table, columns, and conditions
+      const parsed = this.parseSQLQuery(sqlQuery);
+      
+      if (!parsed) {
+        throw new Error("Unable to parse SQL query");
+      }
+
+      console.log("Parsed query:", parsed);
+
+      // Handle COUNT queries specially
+      if (parsed.isCount) {
+        let query = supabase.from(parsed.table).select('*', { count: 'exact', head: true });
+        
+        // Apply WHERE conditions for count
+        if (parsed.where) {
+          parsed.where.forEach(condition => {
+            if (condition.operator === '=') {
+              query = query.eq(condition.column, condition.value);
+            } else if (condition.operator === 'ILIKE' || condition.operator === 'ilike') {
+              query = query.ilike(condition.column, condition.value);
+            } else if (condition.operator === '>') {
+              query = query.gt(condition.column, condition.value);
+            } else if (condition.operator === '<') {
+              query = query.lt(condition.column, condition.value);
+            } else if (condition.operator === '>=') {
+              query = query.gte(condition.column, condition.value);
+            } else if (condition.operator === '<=') {
+              query = query.lte(condition.column, condition.value);
+            }
+          });
+        }
+
+        const { count, error } = await query;
+
+        if (error) {
+          console.error("Count query execution error:", error);
+          throw error;
+        }
+
+        console.log("Count query executed successfully. Count:", count);
+        return [{ count: count }];
+      }
+
+      // Build and execute regular SELECT query using Supabase query builder
+      let query = supabase.from(parsed.table).select(parsed.columns);
+
+      // Apply WHERE conditions
+      if (parsed.where) {
+        parsed.where.forEach(condition => {
+          if (condition.operator === '=') {
+            query = query.eq(condition.column, condition.value);
+          } else if (condition.operator === 'ILIKE' || condition.operator === 'ilike') {
+            query = query.ilike(condition.column, condition.value);
+          } else if (condition.operator === '>') {
+            query = query.gt(condition.column, condition.value);
+          } else if (condition.operator === '<') {
+            query = query.lt(condition.column, condition.value);
+          } else if (condition.operator === '>=') {
+            query = query.gte(condition.column, condition.value);
+          } else if (condition.operator === '<=') {
+            query = query.lte(condition.column, condition.value);
+          }
+        });
+      }
+
+      // Apply ORDER BY
+      if (parsed.orderBy) {
+        query = query.order(parsed.orderBy.column, { ascending: parsed.orderBy.ascending });
+      }
+
+      // Apply LIMIT
+      if (parsed.limit) {
+        query = query.limit(parsed.limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Query execution error:", error);
+        throw error;
+      }
+
+      console.log("Query executed successfully. Rows returned:", data?.length || 0);
+      return data || [];
+    } catch (error) {
+      console.error("Error in executeQuery:", error);
+      throw new Error(`Database query failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Parse a SQL query string into components for Supabase query builder
+   */
+  parseSQLQuery(sqlQuery) {
+    try {
+      // Remove extra whitespace and normalize
+      const normalized = sqlQuery.trim().replace(/\s+/g, ' ');
+      
+      // Check if it's a COUNT query
+      const isCount = /SELECT\s+COUNT\s*\(\s*\*?\s*\)/i.test(normalized);
+      
+      // Extract SELECT columns
+      const selectMatch = normalized.match(/SELECT\s+(.*?)\s+FROM/i);
+      if (!selectMatch) return null;
+      const columns = selectMatch[1].trim() === '*' ? '*' : selectMatch[1].trim();
+
+      // Extract table name
+      const tableMatch = normalized.match(/FROM\s+(\w+)/i);
+      if (!tableMatch) return null;
+      const table = tableMatch[1];
+
+      // Extract WHERE conditions
+      const where = [];
+      const whereMatch = normalized.match(/WHERE\s+(.*?)(?:ORDER BY|LIMIT|$)/i);
+      if (whereMatch) {
+        const whereClause = whereMatch[1].trim();
+        // Parse simple conditions (column = 'value' or column operator value)
+        const conditions = whereClause.split(/\s+AND\s+/i);
+        conditions.forEach(condition => {
+          // Match: column operator 'value' or column operator value
+          const condMatch = condition.match(/(\w+)\s*(=|>|<|>=|<=|ILIKE|ilike)\s*'?([^']+)'?/i);
+          if (condMatch) {
+            where.push({
+              column: condMatch[1],
+              operator: condMatch[2],
+              value: condMatch[3].replace(/'/g, '') // Remove quotes from value
+            });
+          }
+        });
+      }
+
+      // Extract ORDER BY
+      let orderBy = null;
+      const orderMatch = normalized.match(/ORDER BY\s+(\w+)\s*(ASC|DESC)?/i);
+      if (orderMatch) {
+        orderBy = {
+          column: orderMatch[1],
+          ascending: !orderMatch[2] || orderMatch[2].toUpperCase() === 'ASC'
+        };
+      }
+
+      // Extract LIMIT
+      let limit = null;
+      const limitMatch = normalized.match(/LIMIT\s+(\d+)/i);
+      if (limitMatch) {
+        limit = parseInt(limitMatch[1]);
+      }
+
+      return { table, columns, where, orderBy, limit, isCount };
+    } catch (error) {
+      console.error("Error parsing SQL query:", error);
+      return null;
+    }
+  }
+
   async bookAppointment(patientDetails) {
     try {
       console.log("Starting appointment booking with details:", patientDetails);
