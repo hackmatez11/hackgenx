@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   runOptimizedSchedule,
+  predictWaitTime,
 } from "../services/schedulingService";
 import {
   getICUBeds,
@@ -13,10 +14,12 @@ import DailyRoundModal from "../components/DailyRoundModal";
 import { autoAssignICUBed } from "./ICUQueuePage";
 
 export default function ICUScheduling() {
-  const [loadingType, setLoadingType] = useState(null); // "optimized" | null
+  const [loadingType, setLoadingType] = useState(null); // "optimized" | "prediction" | null
   const [error, setError] = useState("");
   const [roundBed, setRoundBed] = useState(null); // bed selected for daily round
   const [optimizedResult, setOptimizedResult] = useState(null);
+  const [waitingQueue, setWaitingQueue] = useState([]);
+  const [waitPredictions, setWaitPredictions] = useState({});
 
   const [beds, setBeds] = useState([]);
   const [bedStats, setBedStats] = useState(null);
@@ -40,6 +43,63 @@ export default function ICUScheduling() {
     } catch (err) {
       console.error("Optimized schedule error:", err);
       setError(err.message || "Failed to run optimized scheduler");
+    } finally {
+      setLoadingType(null);
+    }
+  };
+
+  // Load waiting ICU queue patients
+  const loadWaitingQueue = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('icu_queue')
+        .select('*')
+        .eq('status', 'waiting')
+        .order('time', { ascending: true });
+
+      if (error) throw error;
+      setWaitingQueue(data || []);
+    } catch (err) {
+      console.error("Error loading waiting queue:", err);
+    }
+  };
+
+  // Get wait time prediction for a patient
+  const getWaitTimePrediction = async (patientToken) => {
+    setLoadingType("prediction");
+    try {
+      const result = await predictWaitTime(patientToken, 20);
+      setWaitPredictions(prev => ({
+        ...prev,
+        [patientToken]: result.data
+      }));
+    } catch (err) {
+      console.error("Prediction error:", err);
+      setError(err.message || "Failed to get wait time prediction");
+    } finally {
+      setLoadingType(null);
+    }
+  };
+
+  // Load predictions for all waiting patients
+  const loadAllPredictions = async () => {
+    if (waitingQueue.length === 0) return;
+    
+    setLoadingType("prediction");
+    setError("");
+    try {
+      const predictions = {};
+      for (const patient of waitingQueue) {
+        try {
+          const result = await predictWaitTime(patient.patient_token, 20);
+          predictions[patient.patient_token] = result.data;
+        } catch (err) {
+          console.error(`Prediction failed for ${patient.patient_token}:`, err);
+        }
+      }
+      setWaitPredictions(predictions);
+    } catch (err) {
+      console.error("Error loading predictions:", err);
     } finally {
       setLoadingType(null);
     }
@@ -85,6 +145,7 @@ export default function ICUScheduling() {
   // Load beds on component mount
   useEffect(() => {
     loadBedsData();
+    loadWaitingQueue();
   }, []);
 
   // Bed management functions
