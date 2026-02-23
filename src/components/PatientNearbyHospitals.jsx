@@ -16,11 +16,11 @@ export default function PatientNearbyHospitals({ patient }) {
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     };
 
@@ -30,19 +30,19 @@ export default function PatientNearbyHospitals({ patient }) {
 
     const fetchNearbyHospitals = async () => {
         if (!user?.id) return;
-        
+
         setLoading(true);
         setError(null);
-        
+
         try {
             const { data: currentDoctor, error: doctorError } = await supabase
                 .from('user_profiles')
                 .select('latitude, longitude')
                 .eq('id', user.id)
                 .single();
-            
+
             if (doctorError) throw doctorError;
-            
+
             if (!currentDoctor?.latitude || !currentDoctor?.longitude) {
                 setError('Location not set');
                 setLoading(false);
@@ -53,12 +53,12 @@ export default function PatientNearbyHospitals({ patient }) {
 
             const { data: otherDoctors, error: doctorsError } = await supabase
                 .from('user_profiles')
-                .select('id, email, street, city, state, latitude, longitude')
+                .select('id, email, name, street, city, state, latitude, longitude')
                 .eq('role', 'doctor')
                 .not('id', 'eq', user.id)
                 .not('latitude', 'is', null)
                 .not('longitude', 'is', null);
-            
+
             if (doctorsError) throw doctorsError;
 
             if (!otherDoctors || otherDoctors.length === 0) {
@@ -68,7 +68,7 @@ export default function PatientNearbyHospitals({ patient }) {
             }
 
             const doctorIds = otherDoctors.map(d => d.id);
-            
+
             let bedQuery = supabase
                 .from('icu_beds')
                 .select('doctor_id, ventilator_available, dialysis_available')
@@ -84,7 +84,7 @@ export default function PatientNearbyHospitals({ patient }) {
             }
 
             const { data: availableBeds, error: bedsError } = await bedQuery;
-            
+
             if (bedsError) throw bedsError;
 
             const bedCounts = {};
@@ -154,23 +154,21 @@ export default function PatientNearbyHospitals({ patient }) {
             {nearbyDoctors.map((doctor, index) => (
                 <div
                     key={doctor.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border ${
-                        index === 0 
-                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 shadow-sm' 
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border ${index === 0
+                            ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-700 shadow-sm'
                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
+                        }`}
                 >
-                    <span className="font-semibold">{doctor.city || 'Unknown'}</span>
+                    <span className="font-semibold">{doctor.name || 'Hospital'}, {doctor.city || 'Unknown'}</span>
                     <span className="w-px h-3 bg-slate-300"></span>
                     <span className="flex items-center gap-0.5 text-slate-500">
                         <span className="material-symbols-outlined text-[10px]">distance</span>
                         {doctor.distance}km
                     </span>
                     <span className="w-px h-3 bg-slate-300"></span>
-                    <span className={`font-bold ${
-                        doctor.availableBeds > 5 ? 'text-emerald-600' : 
-                        doctor.availableBeds > 2 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
+                    <span className={`font-bold ${doctor.availableBeds > 5 ? 'text-emerald-600' :
+                            doctor.availableBeds > 2 ? 'text-amber-600' : 'text-red-600'
+                        }`}>
                         {doctor.availableBeds} beds
                     </span>
                     {index === 0 && (

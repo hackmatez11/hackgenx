@@ -17,11 +17,11 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
         const R = 6371; // Earth's radius in kilometers
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     };
 
@@ -33,10 +33,10 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
 
     const fetchNearbyHospitals = async () => {
         if (!user?.id) return;
-        
+
         setLoading(true);
         setError(null);
-        
+
         try {
             // 1. Get current doctor's coordinates
             const { data: currentDoctor, error: doctorError } = await supabase
@@ -44,9 +44,9 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
                 .select('latitude, longitude')
                 .eq('id', user.id)
                 .single();
-            
+
             if (doctorError) throw doctorError;
-            
+
             if (!currentDoctor?.latitude || !currentDoctor?.longitude) {
                 setError('Your hospital location is not set. Please update your profile.');
                 setLoading(false);
@@ -58,12 +58,12 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
             // 2. Get all other doctors with coordinates
             const { data: otherDoctors, error: doctorsError } = await supabase
                 .from('user_profiles')
-                .select('id, email, street, city, state, latitude, longitude')
+                .select('id, email, name, street, city, state, latitude, longitude')
                 .eq('role', 'doctor')
                 .not('id', 'eq', user.id)
                 .not('latitude', 'is', null)
                 .not('longitude', 'is', null);
-            
+
             if (doctorsError) throw doctorsError;
 
             if (!otherDoctors || otherDoctors.length === 0) {
@@ -74,7 +74,7 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
 
             // 3. Get available ICU beds for these doctors
             const doctorIds = otherDoctors.map(d => d.id);
-            
+
             let bedQuery = supabase
                 .from('icu_beds')
                 .select('doctor_id, bed_id, ventilator_available, dialysis_available')
@@ -90,7 +90,7 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
             }
 
             const { data: availableBeds, error: bedsError } = await bedQuery;
-            
+
             if (bedsError) throw bedsError;
 
             // 4. Count beds per doctor and calculate distances
@@ -177,15 +177,14 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
                             <p className="text-sm text-slate-500 mb-4">
                                 Showing {nearbyDoctors.length} hospital{nearbyDoctors.length !== 1 ? 's' : ''} sorted by distance and available beds.
                             </p>
-                            
+
                             {nearbyDoctors.map((doctor, index) => (
                                 <div
                                     key={doctor.id}
-                                    className={`border rounded-xl p-4 transition-all hover:shadow-md ${
-                                        index === 0 
-                                            ? 'border-green-300 bg-green-50/50' 
+                                    className={`border rounded-xl p-4 transition-all hover:shadow-md ${index === 0
+                                            ? 'border-green-300 bg-green-50/50'
                                             : 'border-slate-200 hover:border-blue-300'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -196,10 +195,10 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
                                                     </span>
                                                 )}
                                                 <h4 className="font-semibold text-slate-800">
-                                                    Hospital in {doctor.city || 'Unknown City'}
+                                                    {doctor.name || 'Hospital'} in {doctor.city || 'Unknown City'}
                                                 </h4>
                                             </div>
-                                            
+
                                             <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
                                                 <span className="flex items-center gap-1">
                                                     <span className="material-symbols-outlined text-blue-500 text-sm">distance</span>
@@ -210,33 +209,31 @@ export default function NearbyHospitalsModal({ isOpen, onClose, patientRequireme
                                                     {doctor.availableBeds} bed{doctor.availableBeds !== 1 ? 's' : ''} available
                                                 </span>
                                             </div>
-                                            
+
                                             {(doctor.street || doctor.state) && (
                                                 <p className="text-xs text-slate-500 mt-2">
                                                     {doctor.street}{doctor.street && doctor.state && ', '}{doctor.state}
                                                 </p>
                                             )}
                                         </div>
-                                        
+
                                         <div className="flex flex-col items-end gap-2">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                doctor.availableBeds > 5 
-                                                    ? 'bg-green-100 text-green-600' 
-                                                    : doctor.availableBeds > 2 
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${doctor.availableBeds > 5
+                                                    ? 'bg-green-100 text-green-600'
+                                                    : doctor.availableBeds > 2
                                                         ? 'bg-amber-100 text-amber-600'
                                                         : 'bg-red-100 text-red-600'
-                                            }`}>
+                                                }`}>
                                                 <span className="material-symbols-outlined text-xl">
                                                     {doctor.availableBeds > 5 ? 'check_circle' : doctor.availableBeds > 2 ? 'info' : 'warning'}
                                                 </span>
                                             </div>
-                                            <span className={`text-xs font-semibold ${
-                                                doctor.availableBeds > 5 
-                                                    ? 'text-green-600' 
-                                                    : doctor.availableBeds > 2 
+                                            <span className={`text-xs font-semibold ${doctor.availableBeds > 5
+                                                    ? 'text-green-600'
+                                                    : doctor.availableBeds > 2
                                                         ? 'text-amber-600'
                                                         : 'text-red-600'
-                                            }`}>
+                                                }`}>
                                                 {doctor.availableBeds > 5 ? 'High' : doctor.availableBeds > 2 ? 'Moderate' : 'Low'} Availability
                                             </span>
                                         </div>
