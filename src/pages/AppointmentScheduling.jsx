@@ -36,6 +36,31 @@ async function getNextQueuePosition(doctorId) {
   return (count || 0) + 1;
 }
 
+// Backend base URL — adjust if your backend runs on a different port
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+/**
+ * Non-blocking helper: sends the appointment confirmation SMS via Twilio.
+ * Any failure is only logged — it never blocks the booking UI.
+ */
+async function sendBookingConfirmationSMS({ phone, patientName, token, queuePosition, estimatedWait, isEmergency }) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/sms/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, patientName, token, queuePosition, estimatedWait, isEmergency }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      console.log("[SMS] Confirmation sent — SID:", data.sid);
+    } else {
+      console.warn("[SMS] Failed to send:", data.error);
+    }
+  } catch (err) {
+    console.error("[SMS] Network error:", err.message);
+  }
+}
+
 export default function AppointmentScheduling() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
@@ -55,9 +80,9 @@ export default function AppointmentScheduling() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -104,7 +129,7 @@ export default function AppointmentScheduling() {
       if (formData.is_emergency) {
         // Add directly to ICU queue
         const tokenNumber = appointment?.token_number || `ICU-${Date.now()}`;
-        
+
         const { data: icuQueueData, error: icuError } = await supabase
           .from('icu_queue')
           .insert([{
@@ -150,6 +175,14 @@ export default function AppointmentScheduling() {
         }
 
         setQueueInfo({ token: tokenNumber, isEmergency: true });
+
+        // Send Twilio SMS — non-blocking
+        sendBookingConfirmationSMS({
+          phone: formData.phone,
+          patientName: formData.patient_name,
+          token: tokenNumber,
+          isEmergency: true,
+        });
       } else {
         // Regular flow - compute moving average and add to OPD queue
         const [estimatedWait, queuePosition] = await Promise.all([
@@ -177,6 +210,16 @@ export default function AppointmentScheduling() {
 
         setQueueInfo({ position: queuePosition, estimatedWait, token: tokenNumber });
         setSuccess(`Appointment booked! Patient added to OPD Queue.`);
+
+        // Send Twilio SMS — non-blocking
+        sendBookingConfirmationSMS({
+          phone: formData.phone,
+          patientName: formData.patient_name,
+          token: tokenNumber,
+          queuePosition,
+          estimatedWait,
+          isEmergency: false,
+        });
       }
       setFormData({
         patient_name: '', age: '', disease: '', phone: '',
@@ -402,8 +445,8 @@ export default function AppointmentScheduling() {
                 <span className="material-symbols-outlined">
                   {formData.is_emergency ? 'emergency' : 'queue'}
                 </span>
-                {loading 
-                  ? (formData.is_emergency ? 'Scheduling Emergency...' : 'Scheduling & Adding to Queue...') 
+                {loading
+                  ? (formData.is_emergency ? 'Scheduling Emergency...' : 'Scheduling & Adding to Queue...')
                   : (formData.is_emergency ? 'Schedule Emergency & Add to ICU' : 'Schedule & Add to OPD Queue')
                 }
               </button>
