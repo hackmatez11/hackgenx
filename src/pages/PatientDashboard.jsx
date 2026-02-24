@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext_simple';
 import { supabase } from '../lib/supabase';
+import { allocateEmergencyICUBed } from '../services/emergencyBedAllocationService';
 
 const DEFAULT_WAIT_MINUTES = 15;
 const MOVING_AVG_WINDOW = 5;
@@ -184,7 +185,7 @@ export default function PatientDashboard() {
         // Add directly to ICU queue
         const tokenNumber = appointment?.token_number || `ICU-${Date.now()}`;
         
-        const { error: icuError } = await supabase
+        const { data: icuQueueData, error: icuError } = await supabase
           .from('icu_queue')
           .insert([{
             patient_token: tokenNumber,
@@ -194,13 +195,41 @@ export default function PatientDashboard() {
             is_emergency: true,
             status: 'waiting',
             severity: 'critical',
+            ventilator_needed: false,
+            dialysis_needed: false,
+            predicted_stay_days: 7,
             created_at: new Date().toISOString(),
-          }]);
+          }])
+          .select();
 
         if (icuError) throw icuError;
 
+        const icuQueueEntry = icuQueueData?.[0];
+
+        // Try to allocate an ICU bed (may transfer stable patient if needed)
+        if (icuQueueEntry) {
+          const allocationResult = await allocateEmergencyICUBed({
+            icuQueueId: icuQueueEntry.id,
+            doctorId: formData.doctor_id,
+            patientRequirements: {
+              ventilator_needed: false,
+              dialysis_needed: false
+            },
+            predictedStayDays: 7
+          });
+
+          if (allocationResult.success) {
+            if (allocationResult.bedFreed) {
+              setSuccess(`Emergency appointment booked! ICU bed ${allocationResult.bed.bed_id} assigned (transferred ${allocationResult.transferredPatient} to general ward).`);
+            } else {
+              setSuccess(`Emergency appointment booked! ICU bed ${allocationResult.bed.bed_id} assigned.`);
+            }
+          } else {
+            setSuccess(`Emergency appointment booked! You have been added to ICU Queue (no beds currently available).`);
+          }
+        }
+
         setQueueInfo({ token: tokenNumber, isEmergency: true });
-        setSuccess(`Emergency appointment booked! You have been added directly to ICU Queue.`);
       } else {
         // Regular flow - compute moving average and add to OPD queue
         const [estimatedWait, queuePosition] = await Promise.all([
