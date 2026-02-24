@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext_simple';
 import { supabase } from '../lib/supabase';
 import { allocateEmergencyICUBed } from '../services/emergencyBedAllocationService';
 
+import NearbyHospitals from "../components/nearbyHospitals";
 const DEFAULT_WAIT_MINUTES = 15;
 const MOVING_AVG_WINDOW = 5;
 
@@ -57,7 +58,9 @@ export default function PatientDashboard() {
   const [queueInfo, setQueueInfo] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [appointmentsHistory, setAppointmentsHistory] = useState([]);
-  const [activeTab, setActiveTab] = useState('book'); // 'book' or 'history'
+  const [activeTab, setActiveTab] = useState("book"); // 'book' or 'history'
+  const [hospitals, setHospitals] = useState([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(true);
 
   const fetchHistory = async () => {
     if (!user?.email) return;
@@ -106,6 +109,33 @@ export default function PatientDashboard() {
       setError('Failed to load medical history: ' + err.message);
     }
   };
+
+  // 🔥 Fetch Nearby Hospitals
+  useEffect(() => {
+    const fetchNearbyHospitals = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/hospitals/nearby", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            latitude: 18.5204,
+            longitude: 73.8567,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.status === "success") {
+          setHospitals(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch hospitals:", err);
+      } finally {
+        setLoadingHospitals(false);
+      }
+    };
+
+    fetchNearbyHospitals();
+  }, []);
 
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -710,6 +740,56 @@ export default function PatientDashboard() {
                 )}
               </div>
             )}
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 mb-6">
+                Nearby ICU Hospitals
+              </h2>
+
+              {loadingHospitals ? (
+                <p className="text-slate-500">Loading hospitals...</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {hospitals.map((hospital, index) => (
+                    <div
+                      key={index}
+                      className="relative bg-white rounded-2xl shadow-md hover:shadow-xl transition p-6 border border-slate-200"
+                    >
+                      {/* Waiting Tag */}
+                      <div className="absolute top-4 left-4 bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold">
+                        {hospital.icu_waiting_minutes} mins
+                      </div>
+
+                      {/* Beds Tag */}
+                      <div className="absolute bottom-4 right-4 bg-green-500 text-white text-xs px-3 py-1 rounded-full font-bold">
+                        {hospital.total_beds_available} Beds
+                      </div>
+
+                      {/* Recommended Badge */}
+                      {index === 0 && (
+                        <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-bold">
+                          Recommended
+                        </div>
+                      )}
+
+                      <div className="mt-10">
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {hospital.hospital_name}
+                        </h3>
+                        <p className="text-slate-600 mt-1">
+                          {hospital.address}
+                        </p>
+                        <p className="text-slate-500 text-sm">
+                          PIN: {hospital.zip_code}
+                        </p>
+                        <p className="text-slate-400 text-sm mt-2">
+                          {hospital.distance_km} km away
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
