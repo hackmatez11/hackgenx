@@ -69,15 +69,28 @@ export const sendBedSMS = async (req, res) => {
             return res.status(400).json({ success: false, error: "Phone number is required." });
         }
 
-        const messageBody =
-            `🏨 *Bed Assigned Successfully* 🏨\n\n` +
-            `Hello ${patientName || "Patient"},\n\n` +
-            `A bed has been assigned to you in the General Ward.\n\n` +
-            `📋 *Details:*\n` +
-            `• Bed Number : ${bedNumber || "N/A"}\n` +
-            `• Bed Type   : ${bedType || "General"}\n\n` +
-            `Please proceed to the ward reception for further assistance.\n\n` +
-            `– Hospital Management System`;
+        let messageBody;
+        if (bedType?.toLowerCase() === 'icu') {
+            messageBody =
+                `🚨 *ICU Bed Assigned* 🚨\n\n` +
+                `Hello ${patientName || "Patient"},\n\n` +
+                `An ICU bed has been assigned and is ready for you.\n\n` +
+                `📋 *Details:*\n` +
+                `• Bed ID   : ${bedNumber || "N/A"}\n` +
+                `• Unit Type : ICU (Intensive Care Unit)\n\n` +
+                `Please report to the ICU reception immediately. Our staff is ready to assist you.\n\n` +
+                `– Hospital Management System`;
+        } else {
+            messageBody =
+                `🏨 *Bed Assigned Successfully* 🏨\n\n` +
+                `Hello ${patientName || "Patient"},\n\n` +
+                `A bed has been assigned to you in the General Ward.\n\n` +
+                `📋 *Details:*\n` +
+                `• Bed Number : ${bedNumber || "N/A"}\n` +
+                `• Bed Type   : ${bedType || "General"}\n\n` +
+                `Please proceed to the ward reception for further assistance.\n\n` +
+                `– Hospital Management System`;
+        }
 
         const message = await sendAppointmentSMS(phone, messageBody);
 

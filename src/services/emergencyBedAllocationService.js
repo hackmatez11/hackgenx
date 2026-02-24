@@ -266,6 +266,27 @@ export async function allocateEmergencyICUBed({ icuQueueId, doctorId, patientReq
 
             if (queueUpdateError) throw queueUpdateError;
 
+            // Send Notification (Non-blocking)
+            // Fetch phone from appointments via token
+            try {
+                const { data: qData } = await supabase
+                    .from('icu_queue')
+                    .select('patient_name, patient_token')
+                    .eq('id', icuQueueId)
+                    .single();
+
+                if (qData) {
+                    sendBedAssignmentNotification({
+                        patientName: qData.patient_name,
+                        bedNumber: assignedBed.bed_id,
+                        bedType: 'icu',
+                        tokenNumber: qData.patient_token
+                    });
+                }
+            } catch (notifyErr) {
+                console.warn('Failed to trigger notification for incoming ICU patient:', notifyErr);
+            }
+
             return {
                 success: true,
                 bedFreed: bedWasFreed,

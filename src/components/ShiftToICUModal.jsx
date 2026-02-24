@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext_simple';
 import NearbyHospitalsModal from './NearbyHospitalsModal';
 import { autoAssignBed } from '../services/autoBedAssignmentService';
+import { sendBedAssignmentNotification } from '../services/bedNotificationService';
 
 export default function ShiftToICUModal({ patient, onClose, onShift }) {
     const { user } = useAuth();
@@ -274,6 +275,16 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                             })
                             .eq('id', queueEntry.id);
                         if (queueUpdateError) throw queueUpdateError;
+
+                        // Send Notification (Non-blocking)
+                        sendBedAssignmentNotification({
+                            patientName: formData.patient_name,
+                            bedNumber: assignedBed.bed_id,
+                            bedType: 'icu',
+                            phone: patient?.phone,
+                            appointmentId: patient?.appointment_id,
+                            tokenNumber: formData.patient_token
+                        });
                     }
                 }
             } else if (formData.is_emergency) {
@@ -322,6 +333,16 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                                     })
                                     .eq('id', queueEntry.id);
                                 if (queueUpdateError) throw queueUpdateError;
+
+                                // Send Notification (Non-blocking)
+                                sendBedAssignmentNotification({
+                                    patientName: formData.patient_name,
+                                    bedNumber: assignedBed.bed_id,
+                                    bedType: 'icu',
+                                    phone: patient?.phone,
+                                    appointmentId: patient?.appointment_id,
+                                    tokenNumber: formData.patient_token
+                                });
                             }
                         }
                     }
@@ -363,12 +384,12 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                     : `📋 ${formData.patient_name} added to ICU waiting queue.\n\nNo ICU bed currently available in this hospital.\nCheck "Nearby Hospitals" for available beds in other facilities.`;
 
             alert(message);
-            
+
             // Show nearby hospitals modal if no beds available
             if (!assignedBed) {
                 setShowNearbyHospitals(true);
             }
-            
+
             onShift();
             if (assignedBed) {
                 onClose();
@@ -506,7 +527,7 @@ export default function ShiftToICUModal({ patient, onClose, onShift }) {
                     </div>
                 </form>
             </div>
-            
+
             {/* Nearby Hospitals Modal */}
             <NearbyHospitalsModal
                 isOpen={showNearbyHospitals}
