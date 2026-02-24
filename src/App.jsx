@@ -3,7 +3,11 @@ import { AuthProvider } from './context/AuthContext_simple';
 import Home from './pages/Home';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
-import PatientDashboard from './pages/PatientDashboard';
+import PatientLayout from './components/PatientLayout';
+import PatientOverview from './pages/patient/PatientOverview';
+import PatientAppointments from './pages/patient/PatientAppointments';
+import PatientHistory from './pages/patient/PatientHistory';
+import PatientHospitals from './pages/patient/PatientHospitals';
 import QueueDashboard from './pages/QueueDashboard';
 import BedManagement from './pages/BedManagement';
 import Patients from './pages/Patients';
@@ -29,10 +33,15 @@ export default function App() {
             path="/patient-dashboard"
             element={
               <ProtectedRoute requiredRole="patient">
-                <PatientDashboard />
+                <PatientLayout />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<PatientOverview />} />
+            <Route path="appointments" element={<PatientAppointments />} />
+            <Route path="history" element={<PatientHistory />} />
+            <Route path="hospitals" element={<PatientHospitals />} />
+          </Route>
 
           {/* Doctor-only routes */}
           <Route
