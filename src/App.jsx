@@ -69,6 +69,14 @@ export default function App() {
             }
           />
           <Route
+            path="/patients/:patientId"
+            element={
+              <ProtectedRoute requiredRole="doctor">
+                <Layout><Patients /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/ai-prediction"
             element={
               <ProtectedRoute requiredRole="doctor">
