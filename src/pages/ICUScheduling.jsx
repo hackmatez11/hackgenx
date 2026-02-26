@@ -520,7 +520,7 @@ export default function ICUScheduling() {
         <div className="flex items-center gap-3">
           {/* Scheduling Actions */}
           <>
-            <button
+            {/* <button
               onClick={handleRunOptimized}
               disabled={loadingType === "optimized"}
               className="flex items-center gap-2 rounded-lg h-10 px-4 bg-[#2b8cee] hover:bg-blue-600 transition-colors text-white text-sm font-bold shadow-md shadow-[#2b8cee]/20 disabled:opacity-60"
@@ -535,7 +535,7 @@ export default function ICUScheduling() {
                 </span>
               )}
               Optimized Run
-            </button>
+            </button> */}
           </>
 
           {/* Bed Management Actions */}
