@@ -716,9 +716,7 @@ export default function ICUScheduling() {
                       </label>
                     </div>
                     <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        ICU Equipment (Showcase Only)
-                      </p>
+                      
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[18px] text-slate-500">

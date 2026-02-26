@@ -226,6 +226,7 @@ export default function PatientAppointments() {
         notes: '',
         is_emergency: false,
       });
+      setShowcaseGender('');
     } catch (err) {
       setError('Failed to schedule appointment: ' + err.message);
     } finally {
@@ -529,12 +530,12 @@ export default function PatientAppointments() {
 
         <div>
           <label className="block text-sm font-bold text-slate-700 mb-2">
-            Gender <span className="text-slate-400 font-normal">(Showcase only)</span>
+            Gender
           </label>
           <select
             value={showcaseGender}
             onChange={(e) => setShowcaseGender(e.target.value)}
-            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2b8cee]/20 focus:border-[#2b8cee] bg-slate-50 transition-all font-medium"
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2b8cee]/20 focus:border-[#2b8cee] bg-slate-50 transition-all font-medium appearance-none"
           >
             <option value="">Select gender</option>
             <option value="male">Male</option>

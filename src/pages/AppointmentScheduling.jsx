@@ -362,7 +362,7 @@ export default function AppointmentScheduling() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Gender <span className="text-slate-400 text-xs font-normal">(Showcase only)</span>
+                  Gender 
                 </label>
                 <select
                   value={showcaseGender}

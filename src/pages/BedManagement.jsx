@@ -16,6 +16,10 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onSh
     const isICU = bed.bed_type === 'icu';
     const isGeneral = bed.bed_type === 'general';
 
+    // UI-only: badge for Women (W/w) or Men (M/m) from first char of bed name
+    const firstChar = ((bed_number || bed_id || '').toString().trim()[0] || '').toLowerCase();
+    const categoryBadge = firstChar === 'w' ? { label: 'Women', className: 'bg-rose-100 text-rose-700' } : firstChar === 'm' ? { label: 'Men', className: 'bg-sky-100 text-sky-700' } : null;
+
     const fmt = (iso) => {
         if (!iso) return null;
         const d = new Date(iso);
@@ -55,8 +59,15 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onSh
                 <div className={`h-1 ${bgColor} w-full absolute top-0`} />
                 <div className="p-5 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start">
-                        <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                        <div className="flex items-center gap-2">
+                        <div>
+                            <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                            {categoryBadge && (
+                                <div className="mt-1">
+                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${categoryBadge.className}`}>{categoryBadge.label}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badgeColor}`}>Available</span>
                             {isGeneral && (
                                 <button
@@ -89,8 +100,17 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onSh
             <div className="h-1 bg-yellow-500 w-full absolute top-0" />
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-700">{status === 'cleaning' ? 'Cleaning' : 'Maintenance'}</span>
+                    <div>
+                        <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                        {categoryBadge && (
+                            <div className="mt-1">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${categoryBadge.className}`}>{categoryBadge.label}</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-700">{status === 'cleaning' ? 'Cleaning' : 'Maintenance'}</span>
+                    </div>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center my-4 text-center">
                     <span className="material-symbols-outlined text-3xl text-yellow-500/70 mb-2">{status === 'cleaning' ? 'cleaning_services' : 'build'}</span>
@@ -142,7 +162,14 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onSh
             <div className="h-1 bg-red-500 w-full absolute top-0" />
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                    <div>
+                        <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                        {categoryBadge && (
+                            <div className="mt-1">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${categoryBadge.className}`}>{categoryBadge.label}</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex flex-col items-end gap-1">
                         <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
                             <span className="material-symbols-outlined text-[14px]">{status === 'critical' ? 'priority_high' : 'monitor_heart'}</span>
@@ -190,7 +217,14 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onSh
             <div className="h-1 bg-red-500 w-full absolute top-0" />
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                    <div>
+                        <span className="font-bold text-slate-900 text-xl">{displayId}</span>
+                        {categoryBadge && (
+                            <div className="mt-1">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${categoryBadge.className}`}>{categoryBadge.label}</span>
+                            </div>
+                        )}
+                    </div>
                     <div className="flex flex-col items-end gap-1">
                         <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
                             <span className="size-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
@@ -611,7 +645,7 @@ export default function BedManagement() {
                                 <p className="text-slate-500 mt-1">Try changing filters or add a new bed.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                                 {sortedBeds.map((bed) => (
                                     <BedCard
                                         key={bed.bed_id || bed.id}
