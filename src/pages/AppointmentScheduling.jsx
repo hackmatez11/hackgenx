@@ -37,7 +37,7 @@ async function getNextQueuePosition(doctorId) {
 }
 
 // Backend base URL — adjust if your backend runs on a different port
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://hackgenx-backend.onrender.com";
 
 /**
  * Non-blocking helper: sends the appointment confirmation SMS via Twilio.
@@ -312,11 +312,6 @@ export default function AppointmentScheduling() {
               <h2 className="text-2xl font-bold text-slate-900">New Appointment</h2>
             </div>
 
-            {/* Moving average info chip */}
-            <div className="mb-6 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700">
-              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-              Wait time is predicted using the moving average of the last {MOVING_AVG_WINDOW} consultations
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>

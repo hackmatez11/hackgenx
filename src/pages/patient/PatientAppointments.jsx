@@ -44,7 +44,7 @@ export default function PatientAppointments() {
     const fetchNearbyHospitals = async (lat, lon) => {
       setHospitalsLoading(true);
       try {
-        const res = await fetch('http://localhost:5000/api/hospitals/nearby', {
+        const res = await fetch('https://hackgenx-backend.onrender.com/api/hospitals/nearby', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -464,14 +464,7 @@ export default function PatientAppointments() {
         </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700">
-        <span className="material-symbols-outlined text-[18px]">
-          auto_awesome
-        </span>
-        Wait time is predicted using the moving average of the last{' '}
-        {PATIENT_MOVING_AVG_WINDOW} consultations.
-      </div>
-
+      
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div>

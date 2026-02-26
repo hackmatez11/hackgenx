@@ -18,7 +18,6 @@ export default function PatientLayout() {
     { to: '/patient-dashboard', label: 'Overview', icon: 'dashboard' },
     { to: '/patient-dashboard/appointments', label: 'Appointments', icon: 'event_available' },
     { to: '/patient-dashboard/history', label: 'History', icon: 'medical_information' },
-    { to: '/patient-dashboard/hospitals', label: 'Nearby Hospitals', icon: 'local_hospital' },
   ];
 
   const isRootOverview = location.pathname === '/patient-dashboard';

@@ -18,6 +18,7 @@ import ICUQueuePage from './pages/ICUQueuePage';
 import ICUScheduling from './pages/ICUScheduling';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import QrRoundPage from './pages/QrRoundPage';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/qr-round" element={<QrRoundPage />} />
 
           {/* Patient-only routes */}
           <Route

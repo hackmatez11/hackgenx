@@ -99,7 +99,9 @@ export async function runDischargePrediction(queueId, currentRoundId, bedQueueEn
                 const queueTable = isICU ? 'icu_queue' : 'bed_queue';
                 const dateColumn = isICU ? 'discharge_time' : 'discharge_time';
 
-                // Note: We update discharge_time so it's reflected on the cards
+                // Note: We TRY to update discharge_time so it's reflected on the cards.
+                // If the column doesn't exist (PGRST204) we silently ignore it so that
+                // general ward setups without this column still work.
                 const { error: syncError } = await supabase
                     .from(queueTable)
                     .update({
@@ -109,7 +111,7 @@ export async function runDischargePrediction(queueId, currentRoundId, bedQueueEn
                     })
                     .eq('id', queueId);
 
-                if (syncError) {
+                if (syncError && syncError.code !== 'PGRST204') {
                     console.error(`Failed to sync discharge_time to ${queueTable}:`, syncError);
                 }
             }

@@ -1,7 +1,7 @@
 import { runBaselineScheduler } from "../services/icuScheduler.js";
 import { runOptimizedScheduler, predictQueueWaitTime } from "../services/optimizedScheduler.js";
 
-// POST http://localhost:5000/api/schedule/baseline
+// POST https://hackgenx-backend.onrender.com/api/schedule/baseline
 export async function baselineSchedule(req, res) {
   try {
     const result = await runBaselineScheduler();
@@ -18,7 +18,7 @@ export async function baselineSchedule(req, res) {
   }
 }
 
-// POST http://localhost:5000/api/schedule/optimize
+// POST https://hackgenx-backend.onrender.com/api/schedule/optimize
 export async function optimizedSchedule(req, res) {
   try {
     const result = await runOptimizedScheduler(30);
@@ -35,7 +35,7 @@ export async function optimizedSchedule(req, res) {
   }
 }
 
-// POST http://localhost:5000/api/schedule/predict-wait-time
+// POST https://hackgenx-backend.onrender.com/api/schedule/predict-wait-time
 export async function predictWaitTime(req, res) {
   try {
     const { patient_token, iterations } = req.body;

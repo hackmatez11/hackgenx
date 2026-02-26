@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { getActivePatients } from '../services/patientService';
+import { useAuth } from '../context/AuthContext_simple';
 
 // ── Queue Item ────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ function QueueItem({ item, onClick }) {
 
 export default function AIPrediction() {
     const navigate = useNavigate();
+    const { user, userRole, loading: authLoading } = useAuth();
     const [patients, setPatients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -101,14 +103,17 @@ export default function AIPrediction() {
         }
     };
 
-    const toggleStaff = (i) =>
-        setStaff((prev) => prev.map((s, idx) => (idx === i ? { ...s, on: !s.on } : s)));
-
     const handlePatientClick = (patient) => {
         navigate(`/patients/${patient.id}?type=${patient.queue_type}`);
     };
 
-    const filtered = patients.filter(
+    // Only show patients belonging to the currently logged-in doctor
+    const doctorPatients = React.useMemo(() => {
+        if (!user || userRole !== 'doctor') return patients;
+        return patients.filter((p) => p.doctor_id === user.id);
+    }, [patients, user, userRole]);
+
+    const filtered = doctorPatients.filter(
         (p) =>
             p.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
             p.display_token?.toLowerCase().includes(search.toLowerCase()) ||

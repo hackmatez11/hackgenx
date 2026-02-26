@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://hackgenx-backend.onrender.com";
 
 /**
  * Fetches the patient's phone number and sends a bed assignment notification.

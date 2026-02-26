@@ -8,7 +8,7 @@ export default function PatientHospitals() {
   useEffect(() => {
     const fetchNearbyHospitals = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/hospitals/nearby', {
+        const res = await fetch('https://hackgenx-backend.onrender.com/api/hospitals/nearby', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

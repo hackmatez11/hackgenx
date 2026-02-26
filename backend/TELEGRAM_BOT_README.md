@@ -147,7 +147,7 @@ When users interact with the bot:
 
 Use the health endpoint to monitor bot status:
 ```bash
-curl http://localhost:5000/api/telegram/health
+curl https://hackgenx-backend.onrender.com/api/telegram/health
 ```
 
 This will return the service status and timestamp.

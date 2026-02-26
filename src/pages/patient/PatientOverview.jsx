@@ -21,8 +21,8 @@ export default function PatientOverview() {
             Welcome back, {user?.email?.split('@')[0]}
           </h2>
           <p className="text-sm text-slate-500">
-            This is your personal health hub. Quickly book new appointments,
-            review your history, and locate nearby ICU hospitals.
+            This is your personal health hub. Quickly book new appointments and
+            review your history.
           </p>
         </div>
       </section>
@@ -66,13 +66,6 @@ export default function PatientOverview() {
           description="See all your past visits, doctors, and clinical notes at a glance."
           href="/patient-dashboard/history"
           accent="slate"
-        />
-        <OverviewCard
-          icon="local_hospital"
-          title="Nearby ICU hospitals"
-          description="Quickly find nearby ICU facilities with their current waiting times."
-          href="/patient-dashboard/hospitals"
-          accent="emerald"
         />
       </section>
     </div>

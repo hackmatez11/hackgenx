@@ -19,6 +19,7 @@ export default function ICUScheduling() {
   const [loadingType, setLoadingType] = useState(null); // "optimized" | "prediction" | null
   const [error, setError] = useState("");
   const [roundBed, setRoundBed] = useState(null); // bed selected for daily round
+  const [qrBed, setQrBed] = useState(null); // bed selected for QR
   const [optimizedResult, setOptimizedResult] = useState(null);
   const [waitingQueue, setWaitingQueue] = useState([]);
   const [waitPredictions, setWaitPredictions] = useState({});
@@ -352,7 +353,7 @@ export default function ICUScheduling() {
     );
   };
 
-  const ICUBedCard = ({ bed, onEdit, onDelete, onRound, onDischarge }) => {
+  const ICUBedCard = ({ bed, onEdit, onDelete, onRound, onDischarge, onShowQr }) => {
     const q = bed.activeQueue;
     const isAvailable = bed.is_available;
 
@@ -421,9 +422,19 @@ export default function ICUScheduling() {
         <div className="p-5 flex flex-col h-full">
           <div className="flex justify-between items-start mb-2">
             <span className="font-bold text-slate-900 text-xl">{bed.bed_id}</span>
-            <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">monitor_heart</span>
-              Occupied (ICU)
+            <div className="flex flex-col items-end gap-1">
+              <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">monitor_heart</span>
+                Occupied (ICU)
+              </div>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onShowQr?.(bed); }}
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 bg-white"
+              >
+                <span className="material-symbols-outlined text-[14px]">qr_code_2</span>
+                QR
+              </button>
             </div>
           </div>
           <h4 className="text-base font-semibold text-slate-900 truncate">{q?.patient_name || '—'}</h4>
@@ -738,6 +749,7 @@ export default function ICUScheduling() {
                       onDelete={handleDeleteBed}
                       onRound={(bedObj) => setRoundBed({ ...bedObj, bed_number: bedObj.bed_id, bed_id: bedObj.id })}
                       onDischarge={handleDischarge}
+                      onShowQr={(bedObj) => setQrBed(bedObj)}
                     />
                   ))}
                 </div>
@@ -754,6 +766,41 @@ export default function ICUScheduling() {
           onClose={() => setRoundBed(null)}
           onUpdate={() => { setRoundBed(null); loadBedsData(); }}
         />
+      )}
+
+      {/* ICU Bed QR Modal */}
+      {qrBed && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 relative">
+            <button
+              onClick={() => setQrBed(null)}
+              className="absolute top-3 right-3 rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-100"
+            >
+              <span className="material-symbols-outlined text-slate-500 text-xl">close</span>
+            </button>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">
+              ICU Bed QR Code
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Scan this code to open the daily round form for ICU bed{' '}
+              <span className="font-semibold">{qrBed.bed_id}</span>.
+            </p>
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-white p-3 rounded-xl border border-slate-200">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                    `${window.location.origin}/qr-round?icu=1&icuBedId=${qrBed.id}`
+                  )}`}
+                  alt="ICU Bed QR code"
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500 text-center">
+              Right-click to save and print this QR code. Place it near the ICU bed.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

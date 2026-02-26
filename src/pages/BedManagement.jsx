@@ -8,7 +8,7 @@ import { processWaitingQueue, assignSinglePatient } from '../services/autoBedAss
 
 // ── Bed Card ──────────────────────────────────────────────────────────────────
 
-function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
+function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU, onShowQr }) {
     const { bed_id, id, bed_number, status, patient, admission, notes } = bed;
 
     const bedId = bed_id || id;
@@ -49,7 +49,6 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
         const borderColor = isICU ? 'hover:border-yellow-500/50' : 'hover:border-green-500/50';
         const badgeColor = isICU ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700';
         const iconColor = isICU ? 'group-hover:text-yellow-500' : 'group-hover:text-green-500';
-        const btnColor = isICU ? 'text-yellow-600 border-yellow-200 hover:bg-yellow-500' : 'text-green-600 border-green-200 hover:bg-green-500';
 
         return (
             <div className={`group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md ${borderColor} transition-all cursor-pointer relative overflow-hidden flex flex-col h-full`}>
@@ -57,7 +56,19 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
                 <div className="p-5 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start">
                         <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badgeColor}`}>Available</span>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badgeColor}`}>Available</span>
+                            {isGeneral && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onShowQr?.(bed); }}
+                                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">qr_code_2</span>
+                                    QR
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="flex-1 flex items-center justify-center my-4">
                         <div className="size-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 transition-colors mr-2">
@@ -67,9 +78,7 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
                             <span className="material-symbols-outlined text-2xl">bed</span>
                         </div>
                     </div>
-                    <div className="pt-3 border-t border-slate-100">
-                        <button className={`w-full py-1.5 rounded text-sm font-medium ${btnColor} hover:text-white transition-colors`}>Assign Patient</button>
-                    </div>
+                    
                 </div>
             </div>
         );
@@ -134,9 +143,19 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
                     <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                    <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px]">{status === 'critical' ? 'priority_high' : 'monitor_heart'}</span>
-                        {status === 'critical' ? 'Critical' : 'Occupied (ICU)'}
+                    <div className="flex flex-col items-end gap-1">
+                        <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">{status === 'critical' ? 'priority_high' : 'monitor_heart'}</span>
+                            {status === 'critical' ? 'Critical' : 'Occupied (ICU)'}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onShowQr?.(bed); }}
+                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 bg-white"
+                        >
+                            <span className="material-symbols-outlined text-[14px]">qr_code_2</span>
+                            QR
+                        </button>
                     </div>
                 </div>
                 <h4 className="text-base font-semibold text-slate-900">{q?.patient_name || '—'}</h4>
@@ -172,9 +191,19 @@ function BedCard({ bed, onUpdate, onDischarge, onUpdateRound, onShiftToICU }) {
             <div className="p-5 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-2">
                     <span className="font-bold text-slate-900 text-xl">{displayId}</span>
-                    <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
-                        Occupied{isGeneral ? ' (General)' : ''}
+                    <div className="flex flex-col items-end gap-1">
+                        <div className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 flex items-center gap-1">
+                            <span className="size-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                            Occupied{isGeneral ? ' (General)' : ''}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onShowQr?.(bed); }}
+                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100 bg-white"
+                        >
+                            <span className="material-symbols-outlined text-[14px]">qr_code_2</span>
+                            QR
+                        </button>
                     </div>
                 </div>
                 <h4 className="text-base font-semibold text-slate-900">{q?.patient_name || '—'}</h4>
@@ -335,6 +364,7 @@ export default function BedManagement() {
     const [showShiftModal, setShowShiftModal] = useState(false);
     const [selectedBed, setSelectedBed] = useState(null);
     const [selectedBedForShift, setSelectedBedForShift] = useState(null);
+    const [qrBed, setQrBed] = useState(null);
 
     const fetchBeds = useCallback(async () => {
         if (!user?.id) { setLoading(false); return; }
@@ -498,6 +528,39 @@ export default function BedManagement() {
                     }}
                 />
             )}
+            {qrBed && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 relative">
+                        <button
+                            onClick={() => setQrBed(null)}
+                            className="absolute top-3 right-3 rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-100"
+                        >
+                            <span className="material-symbols-outlined text-slate-500 text-xl">close</span>
+                        </button>
+                        <h3 className="text-lg font-bold text-slate-900 mb-1">
+                            Bed QR Code
+                        </h3>
+                        <p className="text-xs text-slate-500 mb-4">
+                            Scan this code to open the daily round form for bed{' '}
+                            <span className="font-semibold">{qrBed.bed_number || qrBed.bed_id}</span>.
+                        </p>
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="bg-white p-3 rounded-xl border border-slate-200">
+                            <img
+     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+       `${window.location.origin}/qr-round?bedId=${qrBed.bed_id || qrBed.id}`
+     )}`}
+     alt="Bed QR code"
+     className="w-48 h-48 object-contain"
+   />
+                            </div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 text-center">
+                            Right-click to save and print this QR code. Place it near the bed in the general ward.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 shrink-0 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -557,6 +620,7 @@ export default function BedManagement() {
                                         onDischarge={handleDischarge}
                                         onUpdateRound={(b) => { setSelectedBed(b); setShowRoundModal(true); }}
                                         onShiftToICU={(b) => { setSelectedBedForShift(b); setShowShiftModal(true); }}
+                                        onShowQr={(b) => setQrBed(b)}
                                     />
                                 ))}
                             </div>
@@ -590,16 +654,7 @@ export default function BedManagement() {
                         </div>
 
                         <div className="mt-8 pt-8 border-t border-slate-200">
-                            <div className="bg-[#2b8cee] rounded-xl p-4 text-white shadow-lg shadow-[#2b8cee]/20">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="material-symbols-outlined text-lg">bolt</span>
-                                    <span className="text-xs font-bold uppercase tracking-wider opacity-80">AI Insight</span>
-                                </div>
-                                <h4 className="font-bold text-sm mb-1">ED Surge Predicted</h4>
-                                <p className="text-[11px] opacity-90 leading-relaxed">
-                                    Historical data suggests a 15% influx increase in the next 3 hours. Suggest clearing cleaning backlog.
-                                </p>
-                            </div>
+                            
                         </div>
                     </div>
                 </aside>
