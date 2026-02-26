@@ -28,6 +28,7 @@ export default function PatientAppointments() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [queueInfo, setQueueInfo] = useState(null);
+  const [showcaseGender, setShowcaseGender] = useState(''); // UI only, not in payload
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -524,6 +525,22 @@ export default function PatientAppointments() {
               className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2b8cee]/20 focus:border-[#2b8cee] bg-slate-50 transition-all font-medium"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-slate-700 mb-2">
+            Gender <span className="text-slate-400 font-normal">(Showcase only)</span>
+          </label>
+          <select
+            value={showcaseGender}
+            onChange={(e) => setShowcaseGender(e.target.value)}
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2b8cee]/20 focus:border-[#2b8cee] bg-slate-50 transition-all font-medium"
+          >
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <div>

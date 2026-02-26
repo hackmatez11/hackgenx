@@ -29,6 +29,10 @@ export default function ICUScheduling() {
   const [showAddBedForm, setShowAddBedForm] = useState(false);
   const [editingBed, setEditingBed] = useState(null);
   const [bedFormLoading, setBedFormLoading] = useState(false);
+  const [showcaseBedFeatures, setShowcaseBedFeatures] = useState({
+    multiparameterMonitor: false,
+    oxygenSupplySystem: false,
+  });
   const [bedForm, setBedForm] = useState({
     bed_id: "",
     bed_type: "Basic",
@@ -274,6 +278,10 @@ export default function ICUScheduling() {
       ventilator_available: false,
       dialysis_available: false,
       is_available: true,
+    });
+    setShowcaseBedFeatures({
+      multiparameterMonitor: false,
+      oxygenSupplySystem: false,
     });
     setShowAddBedForm(false);
   };
@@ -706,6 +714,75 @@ export default function ICUScheduling() {
                       <label htmlFor="dialysis" className="text-sm font-medium text-slate-700">
                         Dialysis Available
                       </label>
+                    </div>
+                    <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        ICU Equipment (Showcase Only)
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[18px] text-slate-500">
+                            vitals
+                          </span>
+                          <span className="text-sm font-medium text-slate-700">
+                            Multiparameter patient monitor
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowcaseBedFeatures((prev) => ({
+                              ...prev,
+                              multiparameterMonitor: !prev.multiparameterMonitor,
+                            }))
+                          }
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            showcaseBedFeatures.multiparameterMonitor
+                              ? "bg-emerald-500"
+                              : "bg-slate-300"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              showcaseBedFeatures.multiparameterMonitor
+                                ? "translate-x-4"
+                                : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[18px] text-slate-500">
+                            local_hospital
+                          </span>
+                          <span className="text-sm font-medium text-slate-700">
+                            Oxygen supply system
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowcaseBedFeatures((prev) => ({
+                              ...prev,
+                              oxygenSupplySystem: !prev.oxygenSupplySystem,
+                            }))
+                          }
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            showcaseBedFeatures.oxygenSupplySystem
+                              ? "bg-emerald-500"
+                              : "bg-slate-300"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              showcaseBedFeatures.oxygenSupplySystem
+                                ? "translate-x-4"
+                                : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-3 mt-6">
