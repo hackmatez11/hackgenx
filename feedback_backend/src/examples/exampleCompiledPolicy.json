@@ -1,0 +1,71 @@
+{
+  "name": "ICU and General Ward Policy",
+  "versionTag": "v1-initial",
+  "priorityRules": [
+    {
+      "id": "high_severity_icu",
+      "description": "High severity patients get large ICU score boost",
+      "conditions": [
+        {
+          "field": "severityScore",
+          "operator": "GTE",
+          "value": 8
+        }
+      ],
+      "score": 100,
+      "category": "ICU"
+    },
+    {
+      "id": "elderly_priority",
+      "description": "Elderly patients get moderate boost",
+      "conditions": [
+        {
+          "field": "age",
+          "operator": "GTE",
+          "value": 65
+        }
+      ],
+      "score": 20,
+      "category": "GENERAL"
+    },
+    {
+      "id": "respiratory_failure_icu",
+      "description": "Respiratory failure routed to ICU",
+      "conditions": [
+        {
+          "field": "conditions",
+          "operator": "IN",
+          "value": ["respiratory_failure"]
+        }
+      ],
+      "score": 50,
+      "category": "ICU"
+    }
+  ],
+  "categoryEligibilityRules": [
+    {
+      "id": "icu_if_severe",
+      "category": "ICU",
+      "conditions": [
+        {
+          "field": "severityScore",
+          "operator": "GTE",
+          "value": 7
+        }
+      ]
+    },
+    {
+      "id": "general_default",
+      "category": "GENERAL",
+      "conditions": [
+        {
+          "field": "age",
+          "operator": "GTE",
+          "value": 18
+        }
+      ]
+    }
+  ],
+  "defaultCategory": "GENERAL"
+}
+
