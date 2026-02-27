@@ -8,6 +8,7 @@ import PatientOverview from './pages/patient/PatientOverview';
 import PatientAppointments from './pages/patient/PatientAppointments';
 import PatientHistory from './pages/patient/PatientHistory';
 import PatientHospitals from './pages/patient/PatientHospitals';
+import PatientVoiceConsultation from './pages/patient/PatientVoiceConsultation';
 import QueueDashboard from './pages/QueueDashboard';
 import BedManagement from './pages/BedManagement';
 import Patients from './pages/Patients';
@@ -43,6 +44,10 @@ export default function App() {
             <Route path="appointments" element={<PatientAppointments />} />
             <Route path="history" element={<PatientHistory />} />
             <Route path="hospitals" element={<PatientHospitals />} />
+            <Route
+              path="voice-consultation"
+              element={<PatientVoiceConsultation />}
+            />
           </Route>
 
           {/* Doctor-only routes */}

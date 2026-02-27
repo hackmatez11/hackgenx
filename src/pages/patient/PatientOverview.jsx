@@ -67,6 +67,13 @@ export default function PatientOverview() {
           href="/patient-dashboard/history"
           accent="slate"
         />
+        <OverviewCard
+          icon="call"
+          title="Voice consultation"
+          description="Use our AI voice agent to quickly book, reschedule, or cancel your appointments."
+          href="/patient-dashboard/voice-consultation"
+          accent="emerald"
+        />
       </section>
     </div>
   );
